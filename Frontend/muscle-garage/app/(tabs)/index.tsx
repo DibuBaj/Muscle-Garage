@@ -1,98 +1,244 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/colors';
+import { Ionicons } from '@expo/vector-icons';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function DashboardScreen() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
 
-export default function HomeScreen() {
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: This is</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>Welcome back,</Text>
+            <Text style={styles.name}>{user?.fullname}</Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Ionicons name="person-outline" size={32} color={Colors.primary} />
+            <Text style={styles.statLabel}>Username</Text>
+            <Text style={styles.statValue}>{user?.username}</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Ionicons name="calendar-outline" size={32} color={Colors.primary} />
+            <Text style={styles.statLabel}>Age</Text>
+            <Text style={styles.statValue}>{user?.age || 'N/A'}</Text>
+          </View>
+
+          {user?.weight && (
+            <View style={styles.statCard}>
+              <Ionicons name="fitness-outline" size={32} color={Colors.primary} />
+              <Text style={styles.statLabel}>Weight</Text>
+              <Text style={styles.statValue}>{user.weight} kg</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="mail-outline" size={20} color={Colors.primary} />
+            <Text style={styles.infoLabel}>Email</Text>
+          </View>
+          <Text style={styles.infoValue}>{user?.email}</Text>
+        </View>
+
+        <View style={styles.dashboardCard}>
+          <Text style={styles.dashboardTitle}>Dashboard</Text>
+          <Text style={styles.dashboardText}>
+            Your fitness journey starts here! Track your progress, set goals, and achieve greatness.
+          </Text>
+          <View style={styles.motivationBox}>
+            <Ionicons name="trophy-outline" size={24} color={Colors.primary} style={styles.motivationIcon} />
+            <Text style={styles.motivationText}>
+              "The only bad workout is the one that didn't happen."
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.quickActions}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="barbell-outline" size={24} color={Colors.white} />
+            <Text style={styles.actionButtonText}>Start Workout</Text>
+            <Ionicons name="chevron-forward" size={20} color={Colors.darkGray} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="nutrition-outline" size={24} color={Colors.white} />
+            <Text style={styles.actionButtonText}>Track Nutrition</Text>
+            <Ionicons name="chevron-forward" size={20} color={Colors.darkGray} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="stats-chart-outline" size={24} color={Colors.white} />
+            <Text style={styles.actionButtonText}>View Progress</Text>
+            <Ionicons name="chevron-forward" size={20} color={Colors.darkGray} />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
+    marginTop: 20,
+  },
+  greeting: {
+    fontSize: 16,
+    color: Colors.lightGray,
+  },
+  name: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: Colors.white,
+    marginTop: 4,
+  },
+  logoutButton: {
+    padding: 8,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    flexWrap: 'wrap',
+  },
+  statCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    flex: 1,
+    minWidth: '30%',
+    marginHorizontal: 4,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.darkGray,
+    marginTop: 8,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.white,
+    marginTop: 4,
+  },
+  infoCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  infoLabel: {
+    fontSize: 14,
+    color: Colors.darkGray,
+    marginLeft: 8,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: Colors.white,
+    fontWeight: '500',
+  },
+  dashboardCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  dashboardTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: Colors.white,
+    marginBottom: 12,
+  },
+  dashboardText: {
+    fontSize: 16,
+    color: Colors.lightGray,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  motivationBox: {
+    flexDirection: 'row',
+    backgroundColor: Colors.inputBackground,
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+  motivationIcon: {
+    marginRight: 12,
+  },
+  motivationText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.lightGray,
+    fontStyle: 'italic',
+  },
+  quickActions: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.white,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  actionButtonText: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.white,
+    marginLeft: 12,
+    fontWeight: '500',
   },
 });
