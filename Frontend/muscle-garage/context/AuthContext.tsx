@@ -1,15 +1,25 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { storage } from '@/utils/storage';
 import { API_URL } from '@/constants/api';
 
 interface User {
   id: string;
+  memberId: string;
   username: string;
   email: string;
   fullname: string;
   age?: number;
+  weight?: number;
+  createdAt?: string;
+}
+
+interface SignupData {
+  username: string;
+  email: string;
+  fullname: string;
+  password: string;
+  age: number;
   weight?: number;
 }
 
@@ -19,7 +29,9 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticating: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (username: string, email: string, fullname: string, password: string, age: number, weight?: number) => Promise<void>;
+  sendOTP: (data: SignupData) => Promise<string>;
+  verifyOTP: (email: string, otp: string) => Promise<void>;
+  resendOTP: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
 }
@@ -39,8 +51,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadToken = async () => {
     try {
-      const storedToken = await SecureStore.getItemAsync('token');
-      const storedUser = await SecureStore.getItemAsync('user');
+      const storedToken = await storage.getItem('token');
+      const storedUser = await storage.getItem('user');
       
       if (storedToken && storedUser) {
         setToken(storedToken);
@@ -67,8 +79,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Login response:', response.data);
       const { token: newToken, user: newUser } = response.data;
       
-      await SecureStore.setItemAsync('token', newToken);
-      await SecureStore.setItemAsync('user', JSON.stringify(newUser));
+      await storage.setItem('token', newToken);
+      await storage.setItem('user', JSON.stringify(newUser));
       
       setToken(newToken);
       setUser(newUser);
@@ -83,40 +95,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signup = async (
-    username: string,
-    email: string,
-    fullname: string,
-    password: string,
-    age: number,
-    weight?: number
-  ) => {
+  const sendOTP = async (data: SignupData): Promise<string> => {
     try {
       setError(null);
       setIsAuthenticating(true);
-      console.log('Attempting signup to:', `${API_URL}/auth/signup`);
+      console.log('Sending OTP to:', `${API_URL}/auth/send-otp`);
       
-      const response = await axios.post(`${API_URL}/auth/signup`, {
-        username,
-        email,
-        fullname,
-        password,
-        age,
-        weight,
-      });
-
-      console.log('Signup response:', response.data);
-      const { token: newToken, user: newUser } = response.data;
-      
-      await SecureStore.setItemAsync('token', newToken);
-      await SecureStore.setItemAsync('user', JSON.stringify(newUser));
-      
-      setToken(newToken);
-      setUser(newUser);
-      console.log('Signup successful, user set:', newUser);
+      const response = await axios.post(`${API_URL}/auth/send-otp`, data);
+      console.log('OTP sent:', response.data);
+      return response.data.email;
     } catch (err: any) {
-      console.error('Signup error:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Signup failed. Please try again.';
+      console.error('Send OTP error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to send OTP.';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -124,10 +114,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const verifyOTP = async (email: string, otp: string) => {
+    try {
+      setError(null);
+      setIsAuthenticating(true);
+      console.log('Verifying OTP for:', email);
+      
+      const response = await axios.post(`${API_URL}/auth/verify-otp`, { email, otp });
+      console.log('OTP verified:', response.data);
+      
+      const { token: newToken, user: newUser } = response.data;
+      
+      await storage.setItem('token', newToken);
+      await storage.setItem('user', JSON.stringify(newUser));
+      
+      setToken(newToken);
+      setUser(newUser);
+      console.log('Account created successfully:', newUser);
+    } catch (err: any) {
+      console.error('Verify OTP error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Invalid OTP.';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const resendOTP = async (email: string) => {
+    try {
+      setError(null);
+      console.log('Resending OTP to:', email);
+      
+      await axios.post(`${API_URL}/auth/resend-otp`, { email });
+      console.log('OTP resent successfully');
+    } catch (err: any) {
+      console.error('Resend OTP error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to resend OTP.';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
   const logout = async () => {
     try {
-      await SecureStore.deleteItemAsync('token');
-      await SecureStore.deleteItemAsync('user');
+      await storage.deleteItem('token');
+      await storage.deleteItem('user');
       setToken(null);
       setUser(null);
     } catch (err) {
@@ -136,7 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isAuthenticating, login, signup, logout, error }}>
+    <AuthContext.Provider value={{ user, token, loading, isAuthenticating, login, sendOTP, verifyOTP, resendOTP, logout, error }}>
       {children}
     </AuthContext.Provider>
   );

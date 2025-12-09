@@ -54,7 +54,10 @@ export default function LoginScreen() {
 
     try {
       await login(email, password);
-      router.replace('/(tabs)');
+      console.log('Login completed, navigating to dashboard...');
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (error: any) {
       Alert.alert('Login Failed', error.message);
     }

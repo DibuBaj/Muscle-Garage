@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { signup, isAuthenticating } = useAuth();
+  const { sendOTP, isAuthenticating } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -89,15 +89,15 @@ export default function SignupScreen() {
     if (!validateForm()) return;
 
     try {
-      await signup(
-        formData.username,
-        formData.email,
-        formData.fullname,
-        formData.password,
-        Number(formData.age),
-        formData.weight ? Number(formData.weight) : undefined
-      );
-      router.replace('/(tabs)');
+      const email = await sendOTP({
+        username: formData.username,
+        email: formData.email,
+        fullname: formData.fullname,
+        password: formData.password,
+        age: Number(formData.age),
+        weight: formData.weight ? Number(formData.weight) : undefined
+      });
+      router.push({ pathname: '/verify-otp', params: { email } });
     } catch (error: any) {
       Alert.alert('Signup Failed', error.message);
     }
@@ -255,7 +255,7 @@ export default function SignupScreen() {
             {isAuthenticating ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.signupButtonText}>Sign Up</Text>
+              <Text style={styles.signupButtonText}>Continue</Text>
             )}
           </TouchableOpacity>
 
@@ -324,6 +324,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: Colors.white,
     fontSize: 16,
+    width: '100%'
   },
   eyeIcon: {
     padding: 4,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -12,6 +12,16 @@ export default function DashboardScreen() {
   const handleLogout = async () => {
     await logout();
     router.replace('/login');
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
   return (
@@ -27,66 +37,91 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="person-outline" size={32} color={Colors.primary} />
-            <Text style={styles.statLabel}>Username</Text>
-            <Text style={styles.statValue}>{user?.username}</Text>
+        <View style={styles.memberCard}>
+          <View style={styles.memberIdContainer}>
+            <Ionicons name="card-outline" size={28} color={Colors.primary} />
+            <View style={styles.memberIdTextContainer}>
+              <Text style={styles.memberIdLabel}>Member ID</Text>
+              <Text style={styles.memberIdValue}>{user?.memberId || 'N/A'}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.detailsCard}>
+          <Text style={styles.sectionTitle}>Profile Details</Text>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="person-outline" size={20} color={Colors.primary} />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Username</Text>
+              <Text style={styles.detailValue}>{user?.username}</Text>
+            </View>
           </View>
 
-          <View style={styles.statCard}>
-            <Ionicons name="calendar-outline" size={32} color={Colors.primary} />
-            <Text style={styles.statLabel}>Age</Text>
-            <Text style={styles.statValue}>{user?.age || 'N/A'}</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="mail-outline" size={20} color={Colors.primary} />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Email</Text>
+              <Text style={styles.detailValue}>{user?.email}</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="person-circle-outline" size={20} color={Colors.primary} />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Full Name</Text>
+              <Text style={styles.detailValue}>{user?.fullname}</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Age</Text>
+              <Text style={styles.detailValue}>{user?.age || 'N/A'} years</Text>
+            </View>
           </View>
 
           {user?.weight && (
-            <View style={styles.statCard}>
-              <Ionicons name="fitness-outline" size={32} color={Colors.primary} />
-              <Text style={styles.statLabel}>Weight</Text>
-              <Text style={styles.statValue}>{user.weight} kg</Text>
-            </View>
+            <>
+              <View style={styles.divider} />
+              <View style={styles.detailRow}>
+                <View style={styles.detailIconContainer}>
+                  <Ionicons name="fitness-outline" size={20} color={Colors.primary} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Weight</Text>
+                  <Text style={styles.detailValue}>{user.weight} kg</Text>
+                </View>
+              </View>
+            </>
           )}
-        </View>
 
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={20} color={Colors.primary} />
-            <Text style={styles.infoLabel}>Email</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="time-outline" size={20} color={Colors.primary} />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Member Since</Text>
+              <Text style={styles.detailValue}>{formatDate(user?.createdAt)}</Text>
+            </View>
           </View>
-          <Text style={styles.infoValue}>{user?.email}</Text>
-        </View>
-
-        <View style={styles.dashboardCard}>
-          <Text style={styles.dashboardTitle}>Dashboard</Text>
-          <Text style={styles.dashboardText}>
-            Your fitness journey starts here! Track your progress, set goals, and achieve greatness.
-          </Text>
-          <View style={styles.motivationBox}>
-            <Ionicons name="trophy-outline" size={24} color={Colors.primary} style={styles.motivationIcon} />
-            <Text style={styles.motivationText}>
-              "The only bad workout is the one that didn't happen."
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="barbell-outline" size={24} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Start Workout</Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.darkGray} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="nutrition-outline" size={24} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Track Nutrition</Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.darkGray} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="stats-chart-outline" size={24} color={Colors.white} />
-            <Text style={styles.actionButtonText}>View Progress</Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.darkGray} />
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -106,8 +141,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 32,
-    marginTop: 20,
+    marginBottom: 24,
+    marginTop: 50,
   },
   greeting: {
     fontSize: 16,
@@ -120,125 +155,78 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   logoutButton: {
-    padding: 8,
+    padding: 12,
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#333333',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    flexWrap: 'wrap',
-  },
-  statCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    flex: 1,
-    minWidth: '30%',
-    marginHorizontal: 4,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.darkGray,
-    marginTop: 8,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.white,
-    marginTop: 4,
-  },
-  infoCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: Colors.darkGray,
-    marginLeft: 8,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: Colors.white,
-    fontWeight: '500',
-  },
-  dashboardCard: {
-    backgroundColor: Colors.cardBackground,
+  memberCard: {
+    backgroundColor: Colors.primary,
     borderRadius: 16,
     padding: 24,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#333333',
   },
-  dashboardTitle: {
+  memberIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  memberIdTextContainer: {
+    marginLeft: 16,
+  },
+  memberIdLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 4,
+  },
+  memberIdValue: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
-    marginBottom: 12,
+    letterSpacing: 2,
   },
-  dashboardText: {
-    fontSize: 16,
-    color: Colors.lightGray,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  motivationBox: {
-    flexDirection: 'row',
-    backgroundColor: Colors.inputBackground,
-    borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
-  },
-  motivationIcon: {
-    marginRight: 12,
-  },
-  motivationText: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.lightGray,
-    fontStyle: 'italic',
-  },
-  quickActions: {
-    marginBottom: 20,
+  detailsCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: Colors.white,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  actionButton: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#333333',
+    paddingVertical: 12,
   },
-  actionButtonText: {
+  detailIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(229, 122, 37, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailContent: {
     flex: 1,
+    marginLeft: 16,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: Colors.darkGray,
+    marginBottom: 2,
+  },
+  detailValue: {
     fontSize: 16,
     color: Colors.white,
-    marginLeft: 12,
     fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#333333',
   },
 });
