@@ -15,7 +15,7 @@ const generateOTP = () => {
 };
 
 exports.sendOTP = async (req, res) => {
-  const { username, email, fullname, password, age, weight } = req.body;
+  const { username, email, fullname, phone, password, age, weight } = req.body;
 
   try {
     let user = await User.findOne({ $or: [{ email }, { username }] });
@@ -35,8 +35,9 @@ exports.sendOTP = async (req, res) => {
       userData: {
         username,
         fullname,
+        phone,
         password: hashedPassword,
-        age,
+        age: age || null,
         weight: weight || null
       }
     });
@@ -78,6 +79,10 @@ exports.verifyOTP = async (req, res) => {
       password: otpDoc.userData.password,
       age: otpDoc.userData.age
     };
+
+    if (otpDoc.userData.phone) {
+      userData.phone = otpDoc.userData.phone;
+    }
 
     if (otpDoc.userData.weight) {
       userData.weight = otpDoc.userData.weight;

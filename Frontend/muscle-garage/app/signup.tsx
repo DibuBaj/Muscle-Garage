@@ -11,7 +11,9 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Keyboard,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/colors';
@@ -20,24 +22,46 @@ import { Ionicons } from '@expo/vector-icons';
 export default function SignupScreen() {
   const router = useRouter();
   const { sendOTP, isAuthenticating } = useAuth();
+  const [step, setStep] = useState(1);
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  const inputRefs = React.useRef<Record<string, View>>({});
+  
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     fullname: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     age: '',
     weight: '',
   });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<any>({});
 
-  const validateForm = () => {
+  // Keyboard handling is managed by KeyboardAvoidingView
+
+  const handleInputFocus = (fieldName: string) => {
+    setTimeout(() => {
+      inputRefs.current[fieldName]?.measureInWindow((x, y, width, height) => {
+        // Scroll so the field is visible with some padding from top
+        scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 150), animated: true });
+      });
+    }, 100);
+  };
+
+  const handleInputBlur = () => {
+    // Reset scroll to top when keyboard closes
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const validateStep1 = () => {
     let valid = true;
     const newErrors: any = {};
 
-    if (!formData.username) {
+    if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
       valid = false;
     }
@@ -50,10 +74,44 @@ export default function SignupScreen() {
       valid = false;
     }
 
-    if (!formData.fullname) {
+    if (!formData.fullname.trim()) {
       newErrors.fullname = 'Full name is required';
       valid = false;
     }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+      valid = false;
+    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
+      newErrors.phone = 'Phone number must be 10 digits';
+      valid = false;
+    }
+
+    setErrors(newErrors);
+    return valid;
+  };
+
+  const validateStep2 = () => {
+    let valid = true;
+    const newErrors: any = {};
+
+    if (formData.age && (isNaN(Number(formData.age)) || Number(formData.age) < 1)) {
+      newErrors.age = 'Age must be a valid number';
+      valid = false;
+    }
+
+    if (formData.weight && (isNaN(Number(formData.weight)) || Number(formData.weight) < 1)) {
+      newErrors.weight = 'Weight must be a valid number';
+      valid = false;
+    }
+
+    setErrors(newErrors);
+    return valid;
+  };
+
+  const validateStep3 = () => {
+    let valid = true;
+    const newErrors: any = {};
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
@@ -68,33 +126,31 @@ export default function SignupScreen() {
       valid = false;
     }
 
-    if (!formData.age) {
-      newErrors.age = 'Age is required';
-      valid = false;
-    } else if (isNaN(Number(formData.age)) || Number(formData.age) < 1) {
-      newErrors.age = 'Age must be a valid number';
-      valid = false;
-    }
-
-    if (formData.weight && (isNaN(Number(formData.weight)) || Number(formData.weight) < 1)) {
-      newErrors.weight = 'Weight must be a valid number';
-      valid = false;
-    }
-
     setErrors(newErrors);
     return valid;
   };
 
+  const handleNext = () => {
+    if (step === 1 && validateStep1()) {
+      setStep(2);
+      setErrors({});
+    } else if (step === 2 && validateStep2()) {
+      setStep(3);
+      setErrors({});
+    }
+  };
+
   const handleSignup = async () => {
-    if (!validateForm()) return;
+    if (!validateStep3()) return;
 
     try {
       const email = await sendOTP({
         username: formData.username,
         email: formData.email,
         fullname: formData.fullname,
+        phone: formData.phone,
         password: formData.password,
-        age: Number(formData.age),
+        age: formData.age ? Number(formData.age) : undefined,
         weight: formData.weight ? Number(formData.weight) : undefined
       });
       router.push({ pathname: '/verify-otp', params: { email } });
@@ -110,15 +166,27 @@ export default function SignupScreen() {
     }
   };
 
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      setErrors({});
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={0}
     >
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        scrollEnabled={true}
+        bounces={false}
+        keyboardDismissMode="interactive"
       >
         <View style={styles.logoContainer}>
           <Image
@@ -127,144 +195,268 @@ export default function SignupScreen() {
             resizeMode="contain"
           />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Start your fitness transformation today</Text>
+          <Text style={styles.subtitle}>Step {step} of 3</Text>
+        </View>
+
+        <View style={styles.progressBar}>
+          <View style={[styles.progressSegment, step >= 1 && styles.progressActive]} />
+          <View style={[styles.progressSegment, step >= 2 && styles.progressActive]} />
+          <View style={[styles.progressSegment, step >= 3 && styles.progressActive]} />
         </View>
 
         <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Username"
-              placeholderTextColor={Colors.darkGray}
-              value={formData.username}
-              onChangeText={(text) => updateField('username', text)}
-              autoCapitalize="none"
-            />
-          </View>
-          {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
+          {/* Step 1: Basic Info */}
+          {step === 1 && (
+            <>
+              <Text style={styles.stepTitle}>User Information</Text>
+              
+              <View 
+                style={styles.inputContainer}
+                ref={(ref) => { if (ref) inputRefs.current['username'] = ref; }}
+              >
+                <Ionicons name="person-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Username"
+                  placeholderTextColor={Colors.darkGray}
+                  value={formData.username}
+                  onChangeText={(text) => updateField('username', text)}
+                  onFocus={() => handleInputFocus('username')}
+                  onBlur={handleInputBlur}
+                  autoCapitalize="none"
+                />
+              </View>
+              {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor={Colors.darkGray}
-              value={formData.email}
-              onChangeText={(text) => updateField('email', text)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
-          </View>
-          {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+              <View 
+                style={styles.inputContainer}
+                ref={(ref) => { if (ref) inputRefs.current['email'] = ref; }}
+              >
+                <Ionicons name="mail-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor={Colors.darkGray}
+                  value={formData.email}
+                  onChangeText={(text) => updateField('email', text)}
+                  onFocus={() => handleInputFocus('email')}
+                  onBlur={handleInputBlur}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
+              {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-circle-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor={Colors.darkGray}
-              value={formData.fullname}
-              onChangeText={(text) => updateField('fullname', text)}
-              autoCapitalize="words"
-            />
-          </View>
-          {errors.fullname ? <Text style={styles.errorText}>{errors.fullname}</Text> : null}
+              <View 
+                style={styles.inputContainer}
+                ref={(ref) => { if (ref) inputRefs.current['fullname'] = ref; }}
+              >
+                <Ionicons name="person-circle-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name"
+                  placeholderTextColor={Colors.darkGray}
+                  value={formData.fullname}
+                  onChangeText={(text) => updateField('fullname', text)}
+                  onFocus={() => handleInputFocus('fullname')}
+                  onBlur={handleInputBlur}
+                  autoCapitalize="words"
+                />
+              </View>
+              {errors.fullname ? <Text style={styles.errorText}>{errors.fullname}</Text> : null}
 
-          <View style={styles.row}>
-            <View style={[styles.inputContainer, styles.halfInput]}>
-              <Ionicons name="calendar-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Age"
-                placeholderTextColor={Colors.darkGray}
-                value={formData.age}
-                onChangeText={(text) => updateField('age', text)}
-                keyboardType="numeric"
-              />
+              <View 
+                style={styles.inputContainer}
+                ref={(ref) => { if (ref) inputRefs.current['phone'] = ref; }}
+              >
+                <Ionicons name="call-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone Number (10 digits)"
+                  placeholderTextColor={Colors.darkGray}
+                  value={formData.phone}
+                  onChangeText={(text) => {
+                    const cleaned = text.replace(/\D/g, '').slice(0, 10);
+                    updateField('phone', cleaned);
+                  }}
+                  onFocus={() => handleInputFocus('phone')}
+                  onBlur={handleInputBlur}
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+              </View>
+              {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+
+              <TouchableOpacity
+                style={[styles.button, styles.nextButton, styles.fullWidthButton]}
+                onPress={handleNext}
+              >
+                <Text style={styles.buttonText}>Next</Text>
+                <Ionicons name="arrow-forward" size={20} color={Colors.white} style={styles.buttonIcon} />
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Step 2: Optional Info */}
+          {step === 2 && (
+            <>
+              <Text style={styles.stepTitle}>Additional Information (Optional)</Text>
+              
+              <View style={styles.row}>
+                <View style={[styles.pickerContainer, styles.halfInput]}>
+                  <Ionicons name="calendar-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                  <Picker
+                    selectedValue={formData.age}
+                    onValueChange={(itemValue) => updateField('age', itemValue)}
+                    style={styles.picker}
+                    dropdownIconColor={Colors.white}
+                    mode="dropdown"
+                  >
+                    <Picker.Item label="Age" value="" />
+                    {Array.from({ length: 100 }, (_, i) => i + 1).map((age) => (
+                      <Picker.Item key={age} label={age.toString()} value={age.toString()} />
+                    ))}
+                  </Picker>
+                </View>
+                <View 
+                  style={[styles.inputContainer, styles.halfInput]}
+                  ref={(ref) => { if (ref) inputRefs.current['weight'] = ref; }}
+                >
+                  <Ionicons name="fitness-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Weight (kg)"
+                    placeholderTextColor={Colors.darkGray}
+                    value={formData.weight}
+                    onChangeText={(text) => updateField('weight', text)}
+                    onFocus={() => handleInputFocus('weight')}
+                    onBlur={handleInputBlur}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+              <View style={styles.row}>
+                <View style={styles.halfWidth}>
+                  {errors.age ? <Text style={styles.errorText}>{errors.age}</Text> : null}
+                </View>
+                <View style={styles.halfWidth}>
+                  {errors.weight ? <Text style={styles.errorText}>{errors.weight}</Text> : null}
+                </View>
+              </View>
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.button, styles.backButton, styles.flexButton]}
+                  onPress={handleBack}
+                >
+                  <Ionicons name="arrow-back" size={20} color={Colors.white} style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Back</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.button, styles.nextButton, styles.flexButton]}
+                  onPress={handleNext}
+                >
+                  <Text style={styles.buttonText}>Next</Text>
+                  <Ionicons name="arrow-forward" size={20} color={Colors.white} style={styles.buttonIcon} />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* Step 3: Password */}
+          {step === 3 && (
+            <>
+              <Text style={styles.stepTitle}>Set Your Password</Text>
+              
+              <View 
+                style={styles.inputContainer}
+                ref={(ref) => { if (ref) inputRefs.current['password'] = ref; }}
+              >
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={Colors.darkGray}
+                  value={formData.password}
+                  onChangeText={(text) => updateField('password', text)}
+                  onFocus={() => handleInputFocus('password')}
+                  onBlur={handleInputBlur}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color={Colors.darkGray}
+                  />
+                </TouchableOpacity>
+              </View>
+              {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+
+              <View 
+                style={styles.inputContainer}
+                ref={(ref) => { if (ref) inputRefs.current['confirmPassword'] = ref; }}
+              >
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm Password"
+                  placeholderTextColor={Colors.darkGray}
+                  value={formData.confirmPassword}
+                  onChangeText={(text) => updateField('confirmPassword', text)}
+                  onFocus={() => handleInputFocus('confirmPassword')}
+                  onBlur={handleInputBlur}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color={Colors.darkGray}
+                  />
+                </TouchableOpacity>
+              </View>
+              {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.button, styles.backButton, styles.flexButton]}
+                  onPress={handleBack}
+                >
+                  <Ionicons name="arrow-back" size={20} color={Colors.white} style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Back</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.button, styles.nextButton, styles.flexButton, isAuthenticating && styles.signupButtonDisabled]}
+                  onPress={handleSignup}
+                  disabled={isAuthenticating}
+                >
+                  {isAuthenticating ? (
+                    <ActivityIndicator color={Colors.white} />
+                  ) : (
+                    <>
+                      <Text style={styles.buttonText}>Sign Up</Text>
+                      <Ionicons name="arrow-forward" size={20} color={Colors.white} style={styles.buttonIcon} />
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {step === 1 && (
+            <View style={styles.loginContainer}>
+              <Text style={styles.loginText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/login' as any)}>
+                <Text style={styles.loginLink}>Login</Text>
+              </TouchableOpacity>
             </View>
-            <View style={[styles.inputContainer, styles.halfInput]}>
-              <Ionicons name="fitness-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Weight (kg)"
-                placeholderTextColor={Colors.darkGray}
-                value={formData.weight}
-                onChangeText={(text) => updateField('weight', text)}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-          <View style={styles.row}>
-            <View style={styles.halfWidth}>
-              {errors.age ? <Text style={styles.errorText}>{errors.age}</Text> : null}
-            </View>
-            <View style={styles.halfWidth}>
-              {errors.weight ? <Text style={styles.errorText}>{errors.weight}</Text> : null}
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={Colors.darkGray}
-              value={formData.password}
-              onChangeText={(text) => updateField('password', text)}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Ionicons
-                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={20}
-                color={Colors.darkGray}
-              />
-            </TouchableOpacity>
-          </View>
-          {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              placeholderTextColor={Colors.darkGray}
-              value={formData.confirmPassword}
-              onChangeText={(text) => updateField('confirmPassword', text)}
-              secureTextEntry={!showConfirmPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-              <Ionicons
-                name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={20}
-                color={Colors.darkGray}
-              />
-            </TouchableOpacity>
-          </View>
-          {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.signupButton, isAuthenticating && styles.signupButtonDisabled]}
-            onPress={handleSignup}
-            disabled={isAuthenticating}
-          >
-            {isAuthenticating ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <Text style={styles.signupButtonText}>Continue</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/login' as any)}>
-              <Text style={styles.loginLink}>Login</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -303,8 +495,29 @@ const styles = StyleSheet.create({
     color: Colors.lightGray,
     textAlign: 'center',
   },
+  progressBar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 32,
+    paddingHorizontal: 20,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 4,
+    backgroundColor: Colors.darkGray,
+    borderRadius: 2,
+  },
+  progressActive: {
+    backgroundColor: Colors.primary,
+  },
   formContainer: {
     width: '100%',
+  },
+  stepTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.white,
+    marginBottom: 20,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -317,6 +530,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
   },
+  pickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.inputBackground,
+    borderRadius: 12,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#333333',
+    overflow: 'hidden',
+  },
+  picker: {
+    flex: 1,
+    fontSize: 16,
+    height: 56,
+    paddingHorizontal: 0,
+    color: Colors.white,
+  },
+
   inputIcon: {
     marginRight: 12,
   },
@@ -345,26 +578,62 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
-  signupButton: {
-    backgroundColor: Colors.primary,
+  button: {
     borderRadius: 12,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    flexDirection: 'row',
+    gap: 8,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    paddingHorizontal: 12,
+  },
+  nextButton: {
+    backgroundColor: Colors.primary,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButton: {
+    backgroundColor: Colors.darkGray,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullWidthButton: {
+    width: '100%',
+    marginTop: 16,
+  },
+  flexButton: {
+    flex: 1,
+  },
+  buttonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  skipButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  buttonIcon: {
+    marginLeft: 4,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    alignItems: 'center',
+    minHeight: 56,
   },
   signupButtonDisabled: {
     opacity: 0.6,
-  },
-  signupButtonText: {
-    color: Colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   loginContainer: {
     flexDirection: 'row',

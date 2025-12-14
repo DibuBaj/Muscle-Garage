@@ -42,8 +42,8 @@ export default function TabLayout() {
           borderTopColor: '#333333',
           borderTopWidth: 1,
           height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          paddingBottom: 6,
+          paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -56,15 +56,6 @@ export default function TabLayout() {
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size || 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass" size={size || 24} color={color} />
           ),
         }}
       />

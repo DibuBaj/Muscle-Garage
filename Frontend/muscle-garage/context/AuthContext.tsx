@@ -8,6 +8,7 @@ interface User {
   memberId: string;
   username: string;
   email: string;
+  phone: string;
   fullname: string;
   age?: number;
   weight?: number;
@@ -18,6 +19,7 @@ interface SignupData {
   username: string;
   email: string;
   fullname: string;
+  phone: string;
   password: string;
   age: number;
   weight?: number;

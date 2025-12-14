@@ -11,6 +11,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -20,10 +21,32 @@ import { Ionicons } from '@expo/vector-icons';
 export default function LoginScreen() {
   const router = useRouter();
   const { login, isAuthenticating } = useAuth();
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  const inputRefs = React.useRef<Record<string, View>>({});
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({ email: '', password: '' });
+
+  React.useEffect(() => {
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      // Keyboard dismissal is handled by KeyboardAvoidingView
+    });
+
+    return () => keyboardDidHideListener.remove();
+  }, []);
+
+  const handleInputFocus = (fieldName: string) => {
+    setTimeout(() => {
+      inputRefs.current[fieldName]?.measureInWindow((x, y, width, height) => {
+        scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 150), animated: true });
+      });
+    }, 100);
+  };
+
+  const handleInputBlur = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   const validateForm = () => {
     let valid = true;
@@ -67,11 +90,15 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={0}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        scrollEnabled={true}
+        bounces={false}
+        keyboardDismissMode="interactive"
       >
         <View style={styles.logoContainer}>
           <Image
@@ -84,7 +111,10 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
+          <View 
+            style={styles.inputContainer}
+            ref={(ref) => { if (ref) inputRefs.current['email'] = ref; }}
+          >
             <Ionicons name="mail-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
@@ -92,6 +122,8 @@ export default function LoginScreen() {
               placeholderTextColor={Colors.darkGray}
               value={email}
               onChangeText={setEmail}
+              onFocus={() => handleInputFocus('email')}
+              onBlur={handleInputBlur}
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
@@ -99,7 +131,10 @@ export default function LoginScreen() {
           </View>
           {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-          <View style={styles.inputContainer}>
+          <View 
+            style={styles.inputContainer}
+            ref={(ref) => { if (ref) inputRefs.current['password'] = ref; }}
+          >
             <Ionicons name="lock-closed-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
@@ -107,6 +142,8 @@ export default function LoginScreen() {
               placeholderTextColor={Colors.darkGray}
               value={password}
               onChangeText={setPassword}
+              onFocus={() => handleInputFocus('password')}
+              onBlur={handleInputBlur}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
             />

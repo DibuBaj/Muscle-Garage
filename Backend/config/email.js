@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
@@ -36,24 +37,27 @@ const sendOTPEmail = async (email, otp) => {
         to: email,
         subject: 'Muscle Garage - Verify Your Email',
         html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1C1C1C; padding: 40px; border-radius: 10px;">
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #E57A25; margin: 0;">Muscle Garage</h1>
-                    <p style="color: #B6B6B6; margin-top: 10px;">Your Fitness Journey Starts Here</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFFFFF; padding: 40px; text-align: center;">
+                <img src="cid:logo" alt="Muscle Garage Logo" style="width: 120px; height: 120px; margin-bottom: 30px;">
+                
+                <h2 style="color: #000000; margin: 20px 0; font-size: 24px;">Email Verification</h2>
+                <p style="color: #000000; margin: 15px 0; font-size: 16px;">Your OTP Code:</p>
+                
+                <div style="background-color: #F0F0F0; padding: 20px; border-radius: 8px; margin: 30px 0;">
+                    <span style="font-size: 36px; font-weight: bold; color: #000000; letter-spacing: 4px;">${otp}</span>
                 </div>
-                <div style="background-color: #2A2A2A; padding: 30px; border-radius: 8px; text-align: center;">
-                    <h2 style="color: #FFFFFF; margin-bottom: 20px;">Email Verification</h2>
-                    <p style="color: #B6B6B6; margin-bottom: 30px;">Use the following OTP to verify your email address:</p>
-                    <div style="background-color: #1C1C1C; padding: 20px; border-radius: 8px; display: inline-block;">
-                        <span style="font-size: 32px; font-weight: bold; color: #E57A25; letter-spacing: 8px;">${otp}</span>
-                    </div>
-                    <p style="color: #6A6A6A; margin-top: 30px; font-size: 14px;">This OTP will expire in 5 minutes.</p>
-                </div>
-                <p style="color: #6A6A6A; text-align: center; margin-top: 30px; font-size: 12px;">
-                    If you didn't request this verification, please ignore this email.
-                </p>
+                
+                <p style="color: #000000; margin: 15px 0; font-size: 14px;">This code will expire in 5 minutes.</p>
+                <p style="color: #666666; margin-top: 30px; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
             </div>
-        `
+        `,
+        attachments: [
+            {
+                filename: 'logo.png',
+                path: path.join(__dirname, '../../Frontend/muscle-garage/assets/images/logo.png'),
+                cid: 'logo'
+            }
+        ]
     };
 
     try {
