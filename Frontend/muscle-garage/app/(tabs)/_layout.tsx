@@ -42,7 +42,7 @@ export default function TabLayout() {
           borderTopColor: '#333333',
           borderTopWidth: 1,
           height: 60,
-          paddingBottom: 6,
+          paddingBottom: 0,
           paddingTop: 6,
         },
         tabBarLabelStyle: {

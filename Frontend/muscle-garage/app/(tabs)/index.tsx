@@ -1,13 +1,67 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { API_URL } from '@/constants/api';
+import axios from 'axios';
+import SubscriptionModal from '@/components/subscription-modal';
+import SubscriptionProgressBar from '@/components/subscription-progress-bar';
+
+interface Subscription {
+  _id: string;
+  membershipId: string | null;
+  totalDays: number;
+  daysLeft: number;
+  startDate: string | null;
+  endDate: string | null;
+  hasSubscribedBefore: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function DashboardScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const router = useRouter();
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  useEffect(() => {
+    fetchSubscription();
+  }, []);
+
+  const fetchSubscription = async () => {
+    try {
+      console.log('Fetching subscription with token:', token?.substring(0, 20) + '...');
+      const response = await axios.get(`${API_URL}/subscription/me`, {
+        headers: {
+          Authorization: token,
+        },
+      });
+
+      console.log('Subscription response:', response.data);
+      if (response.data.success) {
+        setSubscription(response.data.subscription);
+      }
+    } catch (err) {
+      console.error('Error fetching subscription:', err.response?.data || err.message);
+      // Still set loading to false even on error
+      setSubscription(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubscriptionSuccess = async () => {
+    console.log('Subscription success callback triggered');
+    // Small delay to ensure backend has processed the subscription
+    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('Fetching updated subscription data');
+    await fetchSubscription();
+    console.log('Subscription data refetched');
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -23,6 +77,10 @@ export default function DashboardScreen() {
       day: 'numeric' 
     });
   };
+
+  const isSubscriptionActive = subscription && subscription.daysLeft > 0;
+  const needsSubscription = subscription && subscription.daysLeft === 0 && !subscription.hasSubscribedBefore;
+  const needsRenewal = subscription && subscription.daysLeft === 0 && subscription.hasSubscribedBefore;
 
   return (
     <View style={styles.container}>
@@ -47,83 +105,80 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View style={styles.detailsCard}>
-          <Text style={styles.sectionTitle}>Profile Details</Text>
-          
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <Ionicons name="person-outline" size={20} color={Colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Username</Text>
-              <Text style={styles.detailValue}>{user?.username}</Text>
-            </View>
+        {/* Subscription Status Section */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
           </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <Ionicons name="mail-outline" size={20} color={Colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Email</Text>
-              <Text style={styles.detailValue}>{user?.email}</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <Ionicons name="person-circle-outline" size={20} color={Colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Full Name</Text>
-              <Text style={styles.detailValue}>{user?.fullname}</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Age</Text>
-              <Text style={styles.detailValue}>{user?.age || 'N/A'} years</Text>
-            </View>
-          </View>
-
-          {user?.weight && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.detailRow}>
-                <View style={styles.detailIconContainer}>
-                  <Ionicons name="fitness-outline" size={20} color={Colors.primary} />
+        ) : (
+          <>
+            {isSubscriptionActive && (
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <View style={styles.subscriptionHeaderContent}>
+                    <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+                    <Text style={styles.subscriptionStatus}>Active Subscription</Text>
+                  </View>
                 </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Weight</Text>
-                  <Text style={styles.detailValue}>{user.weight} kg</Text>
-                </View>
+                
+                <SubscriptionProgressBar
+                  daysLeft={subscription?.daysLeft || 0}
+                  totalDays={subscription?.totalDays || 0}
+                />
               </View>
-            </>
-          )}
+            )}
 
-          <View style={styles.divider} />
+            {needsSubscription && (
+              <View style={styles.subscriptionPromptCard}>
+                <Ionicons name="notifications-outline" size={32} color={Colors.primary} style={styles.promptIcon} />
+                <Text style={styles.promptTitle}>Subscribe your gym membership now</Text>
+                <Text style={styles.promptSubtitle}>Choose a plan and get started with your fitness journey</Text>
+                <TouchableOpacity 
+                  style={styles.promptButton}
+                  onPress={() => setModalVisible(true)}
+                >
+                  <Text style={styles.promptButtonText}>Subscribe Now</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <Ionicons name="time-outline" size={20} color={Colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Member Since</Text>
-              <Text style={styles.detailValue}>{formatDate(user?.createdAt)}</Text>
-            </View>
-          </View>
-        </View>
+            {needsRenewal && (
+              <View style={styles.subscriptionPromptCard}>
+                <Ionicons name="alert-circle-outline" size={32} color={Colors.error} style={styles.promptIcon} />
+                <Text style={styles.promptTitle}>Renew your membership</Text>
+                <Text style={styles.promptSubtitle}>Your subscription has expired. Renew now to continue</Text>
+                <TouchableOpacity 
+                  style={styles.promptButton}
+                  onPress={() => setModalVisible(true)}
+                >
+                  <Text style={styles.promptButtonText}>Renew Now</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!isSubscriptionActive && !needsSubscription && !needsRenewal && subscription && (
+              <View style={styles.subscriptionPromptCard}>
+                <Ionicons name="notifications-outline" size={32} color={Colors.primary} style={styles.promptIcon} />
+                <Text style={styles.promptTitle}>Subscribe your gym membership now</Text>
+                <Text style={styles.promptSubtitle}>Choose a plan and get started with your fitness journey</Text>
+                <TouchableOpacity 
+                  style={styles.promptButton}
+                  onPress={() => setModalVisible(true)}
+                >
+                  <Text style={styles.promptButtonText}>Subscribe Now</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        )}
       </ScrollView>
+
+      <SubscriptionModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        token={token}
+        onSubscriptionSuccess={handleSubscriptionSuccess}
+      />
     </View>
   );
 }
@@ -185,48 +240,120 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 2,
   },
-  detailsCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.white,
-    marginBottom: 20,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  detailIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(229, 122, 37, 0.15)',
+  // loadingContainer: {
+  //   height: 100,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  // },
+  loadingContainer: {
+    height: 100,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  detailContent: {
-    flex: 1,
-    marginLeft: 16,
+  // subscriptionCard: {
+  //   backgroundColor: Colors.cardBackground,
+  //   borderRadius: 16,
+  //   padding: 20,
+  //   marginBottom: 24,
+  //   borderWidth: 1,
+  //   borderColor: Colors.success,
+  // },
+  subscriptionCard: {
+    padding: 20,
+    marginBottom: 24,
   },
-  detailLabel: {
-    fontSize: 12,
-    color: Colors.darkGray,
-    marginBottom: 2,
+  // subscriptionHeader: {
+  //   marginBottom: 16,
+  // },
+  subscriptionHeader: {
+    marginBottom: 16,
   },
-  detailValue: {
+  // subscriptionHeaderContent: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   gap: 12,
+  // },
+  subscriptionHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  // subscriptionStatus: {
+  //   fontSize: 16,
+  //   fontWeight: '600',
+  //   color: Colors.success,
+  // },
+  subscriptionStatus: {
     fontSize: 16,
-    color: Colors.white,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: Colors.success,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#333333',
+  // subscriptionPromptCard: {
+  //   backgroundColor: 'rgba(229, 122, 37, 0.1)',
+  //   borderRadius: 16,
+  //   padding: 24,
+  //   marginBottom: 24,
+  //   borderWidth: 1,
+  //   borderColor: Colors.primary,
+  //   alignItems: 'center',
+  // },
+  subscriptionPromptCard: {
+    padding: 24,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  // promptIcon: {
+  //   marginBottom: 12,
+  // },
+  promptIcon: {
+    marginBottom: 12,
+  },
+  // promptTitle: {
+  //   fontSize: 18,
+  //   fontWeight: 'bold',
+  //   color: Colors.white,
+  //   textAlign: 'center',
+  //   marginBottom: 8,
+  // },
+  promptTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.white,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  // promptSubtitle: {
+  //   fontSize: 14,
+  //   color: Colors.lightGray,
+  //   textAlign: 'center',
+  //   marginBottom: 16,
+  // },
+  promptSubtitle: {
+    fontSize: 14,
+    color: Colors.lightGray,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  // promptButton: {
+  //   backgroundColor: Colors.primary,
+  //   paddingHorizontal: 32,
+  //   paddingVertical: 12,
+  //   borderRadius: 12,
+  // },
+  promptButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  // promptButtonText: {
+  //   fontSize: 14,
+  //   fontWeight: '600',
+  //   color: Colors.white,
+  // },
+  promptButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.white,
   },
 });

@@ -195,7 +195,8 @@ export default function SignupScreen() {
             resizeMode="contain"
           />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Step {step} of 3</Text>
+          <Text style={styles.subtitle}>Start your fitness transformation today</Text>
+          <Text style={styles.stepIndicator}>Step {step} of 3</Text>
         </View>
 
         <View style={styles.progressBar}>
@@ -493,6 +494,12 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: Colors.lightGray,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  stepIndicator: {
+    fontSize: 12,
+    color: Colors.darkGray,
     textAlign: 'center',
   },
   progressBar: {
