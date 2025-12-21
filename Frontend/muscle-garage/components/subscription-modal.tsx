@@ -6,7 +6,6 @@ import {
   Modal,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import axios from 'axios';
 import { API_URL } from '@/constants/api';
@@ -56,10 +55,13 @@ export default function SubscriptionModal({
 }: SubscriptionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubscribe = async () => {
     if (!selectedPlan) {
-      Alert.alert('Please select a plan', 'Choose a subscription plan to continue');
+      setErrorMessage('Please select a plan');
+      setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
 
@@ -79,23 +81,25 @@ export default function SubscriptionModal({
         setLoading(false);
         setSelectedPlan(null);
         
-        // Immediately update parent state and close modal
+        // Show success message
+        setSuccessMessage('Subscription successful!');
+        
+        // Immediately update parent state
         await onSubscriptionSuccess();
         
-        // Show success message
-        Alert.alert('Success', 'Subscription successful!');
-        
-        // Close modal after a brief delay to allow alert to be read
+        // Close modal after showing success message
         setTimeout(() => {
+          setSuccessMessage('');
           onClose();
-        }, 500);
+        }, 2000);
       }
     } catch (error: any) {
       setLoading(false);
       console.error('Subscription error:', error);
-      const errorMessage =
+      const errorMsg =
         error.response?.data?.message || 'Failed to subscribe. Please try again.';
-      Alert.alert('Error', errorMessage);
+      setErrorMessage(errorMsg);
+      setTimeout(() => setErrorMessage(''), 3000);
     }
   };
 
@@ -106,6 +110,24 @@ export default function SubscriptionModal({
       animationType="slide"
       onRequestClose={onClose}
     >
+      {successMessage ? (
+        <View style={styles.successNotification}>
+          <View style={styles.notificationContent}>
+            <Ionicons name="checkmark-circle" size={24} color={Colors.success} style={styles.notificationIcon} />
+            <Text style={styles.notificationText}>{successMessage}</Text>
+          </View>
+        </View>
+      ) : null}
+      
+      {errorMessage ? (
+        <View style={styles.errorNotification}>
+          <View style={styles.notificationContent}>
+            <Ionicons name="alert-circle" size={24} color={Colors.error} style={styles.notificationIcon} />
+            <Text style={styles.notificationText}>{errorMessage}</Text>
+          </View>
+        </View>
+      ) : null}
+      
       <View style={styles.overlay}>
         <View style={styles.modalContent}>
           <View style={styles.header}>
@@ -251,5 +273,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.lightGray,
+  },
+  successNotification: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    backgroundColor: 'rgba(40, 167, 69, 0.95)',
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+  },
+  errorNotification: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    backgroundColor: 'rgba(196, 23, 23, 0.95)',
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+  },
+  notificationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationIcon: {
+    marginRight: 12,
+  },
+  notificationText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
   },
 });

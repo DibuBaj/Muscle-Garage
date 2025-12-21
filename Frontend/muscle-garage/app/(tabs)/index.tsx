@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '@/constants/api';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import SubscriptionModal from '@/components/subscription-modal';
 import SubscriptionProgressBar from '@/components/subscription-progress-bar';
 
@@ -46,7 +46,8 @@ export default function DashboardScreen() {
         setSubscription(response.data.subscription);
       }
     } catch (err) {
-      console.error('Error fetching subscription:', err.response?.data || err.message);
+      const error = err as AxiosError;
+      console.error('Error fetching subscription:', error.response?.data || error.message);
       // Still set loading to false even on error
       setSubscription(null);
     } finally {
@@ -65,7 +66,7 @@ export default function DashboardScreen() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/login');
+    router.replace('/auth-choice');
   };
 
   const formatDate = (dateString?: string) => {

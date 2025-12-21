@@ -10,9 +10,11 @@
     "backgroundColor": "#1C1C1C",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.musclegarage.app"
     },
     "android": {
+      "package": "com.musclegarage.app",
       "adaptiveIcon": {
         "backgroundColor": "#1C1C1C",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -41,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fe167609-751a-4c64-8ddc-780cf08585e8"
+      }
+    },
+    "owner": "dibubaj"
   }
 }

@@ -13,6 +13,9 @@ interface User {
   age?: number;
   weight?: number;
   createdAt?: string;
+  authProvider?: 'email' | 'google';
+  googleId?: string;
+  profilePicture?: string;
 }
 
 interface SignupData {
@@ -34,6 +37,8 @@ interface AuthContextType {
   sendOTP: (data: SignupData) => Promise<string>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
   resendOTP: (email: string) => Promise<void>;
+  googleAuth: (googleId: string, email: string, fullname: string, profilePicture?: string) => Promise<boolean>;
+  completeGoogleOnboarding: (googleId: string, email: string, fullname: string, username: string, phone: string, age?: number, weight?: number, profilePicture?: string) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
 }
@@ -158,6 +163,75 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const googleAuth = async (googleId: string, email: string, fullname: string, profilePicture?: string): Promise<boolean> => {
+    try {
+      setError(null);
+      setIsAuthenticating(true);
+      console.log('Google auth for:', email);
+      
+      const response = await axios.post(`${API_URL}/auth/google-auth`, {
+        googleId,
+        email,
+        fullname,
+        profilePicture,
+      });
+      
+      console.log('Google auth response:', response.data);
+      const { isNewUser, token: newToken, user: newUser } = response.data;
+      
+      if (!isNewUser) {
+        // Existing user, store token and user
+        await storage.setItem('token', newToken);
+        await storage.setItem('user', JSON.stringify(newUser));
+        setToken(newToken);
+        setUser(newUser);
+      }
+      
+      return isNewUser;
+    } catch (err: any) {
+      console.error('Google auth error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Google authentication failed.';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const completeGoogleOnboarding = async (googleId: string, email: string, fullname: string, username: string, phone: string, age?: number, weight?: number, profilePicture?: string) => {
+    try {
+      setError(null);
+      setIsAuthenticating(true);
+      console.log('Completing Google onboarding for:', email);
+      
+      const response = await axios.post(`${API_URL}/auth/complete-google-onboarding`, {
+        googleId,
+        email,
+        fullname,
+        username,
+        phone,
+        age,
+        weight,
+        profilePicture,
+      });
+      
+      console.log('Google onboarding response:', response.data);
+      const { token: newToken, user: newUser } = response.data;
+      
+      await storage.setItem('token', newToken);
+      await storage.setItem('user', JSON.stringify(newUser));
+      setToken(newToken);
+      setUser(newUser);
+    } catch (err: any) {
+      console.error('Google onboarding error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to complete onboarding.';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await storage.deleteItem('token');
@@ -170,7 +244,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isAuthenticating, login, sendOTP, verifyOTP, resendOTP, logout, error }}>
+    <AuthContext.Provider value={{ user, token, loading, isAuthenticating, login, sendOTP, verifyOTP, resendOTP, googleAuth, completeGoogleOnboarding, logout, error }}>
       {children}
     </AuthContext.Provider>
   );

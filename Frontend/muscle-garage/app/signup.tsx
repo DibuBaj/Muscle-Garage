@@ -18,13 +18,39 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import PasswordStrengthIndicator from '@/components/password-strength-indicator';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
+
+// Use appropriate Client ID based on platform
+const GOOGLE_CLIENT_ID = Platform.select({
+  web: '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com', // Web
+  ios: '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com', // iOS
+  android: '532915510052-bph260218qunsqu4o35v6mijf9at3nfh.apps.googleusercontent.com', // Android
+}) as string;
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { sendOTP, isAuthenticating } = useAuth();
+  const { sendOTP, isAuthenticating, googleAuth } = useAuth();
   const [step, setStep] = useState(1);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState('');
   const scrollViewRef = React.useRef<ScrollView>(null);
   const inputRefs = React.useRef<Record<string, View>>({});
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: GOOGLE_CLIENT_ID,
+    scopes: ['profile', 'email'],
+  });
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      handleGoogleSignup(authentication?.accessToken);
+    }
+  }, [response]);
   
   const [formData, setFormData] = useState({
     username: '',
@@ -140,6 +166,58 @@ export default function SignupScreen() {
     }
   };
 
+  const handleGoogleSignup = async (accessToken: string | undefined) => {
+    if (!accessToken) {
+      setGoogleError('Google authentication failed');
+      return;
+    }
+
+    setGoogleLoading(true);
+    setGoogleError('');
+    try {
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!userInfoResponse.ok) {
+        throw new Error('Failed to fetch user info');
+      }
+
+      const userInfo = await userInfoResponse.json();
+
+      // Use AuthContext to handle Google auth
+      const isNewUser = await googleAuth(
+        userInfo.id,
+        userInfo.email,
+        userInfo.name,
+        userInfo.picture
+      );
+
+      if (isNewUser) {
+        // Navigate to onboarding
+        router.push({
+          pathname: '/google-onboarding',
+          params: {
+            googleId: userInfo.id,
+            email: userInfo.email,
+            fullname: userInfo.name,
+            profilePicture: userInfo.picture,
+          },
+        });
+      } else {
+        // Login successful
+        setGoogleError('');
+        router.replace('/(tabs)');
+      }
+    } catch (error: any) {
+      console.error('Google signup error:', error);
+      setGoogleError(error.message || 'Google signup failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const handleSignup = async () => {
     if (!validateStep3()) return;
 
@@ -188,6 +266,16 @@ export default function SignupScreen() {
         bounces={false}
         keyboardDismissMode="interactive"
       >
+        {/* Back Button */}
+        {step === 1 && (
+          <TouchableOpacity
+            style={styles.backButtonTop}
+            onPress={() => router.push('/auth-choice')}
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
+
         <View style={styles.logoContainer}>
           <Image
             source={require('@/assets/images/logo.png')}
@@ -203,6 +291,42 @@ export default function SignupScreen() {
           <View style={[styles.progressSegment, step >= 1 && styles.progressActive]} />
           <View style={[styles.progressSegment, step >= 2 && styles.progressActive]} />
           <View style={[styles.progressSegment, step >= 3 && styles.progressActive]} />
+        </View>
+
+        {/* Google Sign-Up Option - Always show */}
+        <View style={styles.formContainer}>
+          <TouchableOpacity
+            style={[styles.googleButton, (googleLoading || !request) && styles.buttonDisabled]}
+            onPress={() => promptAsync()}
+            disabled={googleLoading || !request}
+          >
+            <View style={styles.googleButtonContent}>
+              <Image
+                source={require('@/assets/images/google_logo.webp')}
+                style={styles.googleLogo}
+                resizeMode="contain"
+              />
+              {googleLoading ? (
+                <ActivityIndicator color="#1F2937" />
+              ) : (
+                <Text style={styles.googleButtonText}>Sign up with Google</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {googleError ? (
+            <View style={styles.errorAlert}>
+              <Ionicons name="alert-circle" size={20} color={Colors.error} />
+              <Text style={styles.errorAlertText}>{googleError}</Text>
+            </View>
+          ) : null}
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
         </View>
 
         <View style={styles.formContainer}>
@@ -397,6 +521,8 @@ export default function SignupScreen() {
               </View>
               {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
 
+              <PasswordStrengthIndicator password={formData.password} />
+
               <View 
                 style={styles.inputContainer}
                 ref={(ref) => { if (ref) inputRefs.current['confirmPassword'] = ref; }}
@@ -531,7 +657,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.inputBackground,
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 12,
     paddingHorizontal: 16,
     height: 56,
     borderWidth: 1,
@@ -542,7 +668,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.inputBackground,
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 12,
     paddingHorizontal: 16,
     height: 56,
     borderWidth: 1,
@@ -655,5 +781,74 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  googleButton: {
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  googleLogo: {
+    width: 24,
+    height: 24,
+  },
+  googleButtonText: {
+    color: '#1F2937',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.darkGray,
+  },
+  dividerText: {
+    color: Colors.darkGray,
+    fontSize: 14,
+    paddingHorizontal: 12,
+  },
+  errorAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.error,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+    gap: 12,
+  },
+  errorAlertText: {
+    color: Colors.white,
+    fontSize: 14,
+    flex: 1,
+    fontWeight: '500',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  backButtonTop: {
+    alignSelf: 'flex-start',
+    padding: 8,
+    marginBottom: 24,
   },
 });
