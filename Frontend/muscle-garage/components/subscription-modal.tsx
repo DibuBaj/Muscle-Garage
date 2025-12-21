@@ -164,114 +164,62 @@ export default function SubscriptionModal({
 }
 
 const styles = StyleSheet.create({
-  // overlay: {
-  //   flex: 1,
-  //   backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  //   justifyContent: 'flex-end',
-  // },
   overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
-  // modalContent: {
-  //   backgroundColor: Colors.background,
-  //   borderTopLeftRadius: 24,
-  //   borderTopRightRadius: 24,
-  //   padding: 24,
-  //   paddingBottom: 40,
-  // },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 24,
     paddingBottom: 40,
   },
-  // header: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  //   marginBottom: 24,
-  // },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
   },
-  // title: {
-  //   fontSize: 24,
-  //   fontWeight: 'bold',
-  //   color: Colors.white,
-  // },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
   },
-  // plansContainer: {
-  //   marginBottom: 24,
-  //   gap: 12,
-  // },
   plansContainer: {
     marginBottom: 24,
     gap: 12,
   },
-  // planBox: {
-  //   backgroundColor: Colors.cardBackground,
-  //   borderRadius: 16,
-  //   padding: 20,
-  //   borderWidth: 2,
-  //   borderColor: '#333333',
-  //   alignItems: 'center',
-  //   position: 'relative',
-  // },
   planBox: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
     padding: 20,
     borderWidth: 2,
-    borderColor: '#CCCCCC',
+    borderColor: '#333333',
     alignItems: 'center',
     position: 'relative',
   },
-  // planBoxSelected: {
-  //   borderColor: Colors.primary,
-  //   backgroundColor: 'rgba(229, 122, 37, 0.1)',
-  // },
   planBoxSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(229, 122, 37, 0.1)',
   },
-  // planLabel: {
-  //   fontSize: 16,
-  //   fontWeight: '600',
-  //   color: Colors.white,
-  //   marginBottom: 8,
-  // },
   planLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.white,
     marginBottom: 8,
   },
-  // planPrice: {
-  //   fontSize: 24,
-  //   fontWeight: 'bold',
-  //   color: Colors.primary,
-  //   marginBottom: 4,
-  // },
   planPrice: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: Colors.primary,
     marginBottom: 4,
   },
-  // planDays: {
-  //   fontSize: 14,
-  //   color: Colors.lightGray,
-  // },
   planDays: {
     fontSize: 14,
+    color: Colors.lightGray,
   },
-  // checkmark: {
-  //   position: 'absolute',
-  //   top: 12,
-  //   right: 12,
-  // },
   checkmark: {
     position: 'absolute',
     top: 12,

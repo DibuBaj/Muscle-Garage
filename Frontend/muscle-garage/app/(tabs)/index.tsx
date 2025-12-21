@@ -130,7 +130,7 @@ export default function DashboardScreen() {
 
             {needsSubscription && (
               <View style={styles.subscriptionPromptCard}>
-                <Ionicons name="notifications-outline" size={32} color={Colors.primary} style={styles.promptIcon} />
+                {/* <Ionicons name="notifications-outline" size={32} color={Colors.primary} style={styles.promptIcon} /> */}
                 <Text style={styles.promptTitle}>Subscribe your gym membership now</Text>
                 <Text style={styles.promptSubtitle}>Choose a plan and get started with your fitness journey</Text>
                 <TouchableOpacity 
@@ -158,7 +158,7 @@ export default function DashboardScreen() {
 
             {!isSubscriptionActive && !needsSubscription && !needsRenewal && subscription && (
               <View style={styles.subscriptionPromptCard}>
-                <Ionicons name="notifications-outline" size={32} color={Colors.primary} style={styles.promptIcon} />
+                {/* <Ionicons name="notifications-outline" size={32} color={Colors.primary} style={styles.promptIcon} /> */}
                 <Text style={styles.promptTitle}>Subscribe your gym membership now</Text>
                 <Text style={styles.promptSubtitle}>Choose a plan and get started with your fitness journey</Text>
                 <TouchableOpacity 
@@ -250,61 +250,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // subscriptionCard: {
-  //   backgroundColor: Colors.cardBackground,
-  //   borderRadius: 16,
-  //   padding: 20,
-  //   marginBottom: 24,
-  //   borderWidth: 1,
-  //   borderColor: Colors.success,
-  // },
   subscriptionCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
     padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.success,
   },
-  // subscriptionHeader: {
-  //   marginBottom: 16,
-  // },
   subscriptionHeader: {
     marginBottom: 16,
   },
-  // subscriptionHeaderContent: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   gap: 12,
-  // },
   subscriptionHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  // subscriptionStatus: {
-  //   fontSize: 16,
-  //   fontWeight: '600',
-  //   color: Colors.success,
-  // },
   subscriptionStatus: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.success,
   },
-  // subscriptionPromptCard: {
-  //   backgroundColor: 'rgba(229, 122, 37, 0.1)',
-  //   borderRadius: 16,
-  //   padding: 24,
-  //   marginBottom: 24,
-  //   borderWidth: 1,
-  //   borderColor: Colors.primary,
-  //   alignItems: 'center',
-  // },
   subscriptionPromptCard: {
+    backgroundColor: 'rgba(229, 122, 37, 0.1)',
+    borderRadius: 16,
     padding: 24,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.primary,
     alignItems: 'center',
   },
-  // promptIcon: {
-  //   marginBottom: 12,
-  // },
   promptIcon: {
     marginBottom: 12,
   },
