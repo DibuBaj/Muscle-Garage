@@ -19,12 +19,9 @@ import * as Google from 'expo-auth-session/providers/google';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Use appropriate Client ID based on platform
-const GOOGLE_CLIENT_ID = Platform.select({
-  web: '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com', // Web
-  ios: '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com', // iOS
-  android: '532915510052-bph260218qunsqu4o35v6mijf9at3nfh.apps.googleusercontent.com', // Android
-}) as string;
+const GOOGLE_ID_WEB = '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com';
+const GOOGLE_ID_AND = '532915510052-h9jt2k68422tq8eum7jop2fmb2qrivvc.apps.googleusercontent.com';
+const GOOGLE_ID_IOS = '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com';
 
 export default function AuthChoiceScreen() {
   const router = useRouter();
@@ -33,14 +30,23 @@ export default function AuthChoiceScreen() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
+    clientId: GOOGLE_ID_WEB,
+    androidClientId: GOOGLE_ID_AND,
+    iosClientId: GOOGLE_ID_IOS,
     scopes: ['profile', 'email'],
   });
 
   useEffect(() => {
     if (response?.type === 'success') {
+      console.log('Google OAuth Success:', response);
       const { authentication } = response;
-      handleGoogleLogin(authentication?.accessToken);
+      if (authentication?.accessToken) {
+        handleGoogleLogin(authentication.accessToken);
+      }
+    } else if (response?.type === 'error') {
+      console.error('Google OAuth Error:', response.error);
+      setErrorMessage('Google login cancelled or failed');
+      setLoading(false);
     }
   }, [response]);
 
@@ -180,7 +186,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: Colors.background, paddingHorizontal: 24, paddingVertical: 40 },
   content: { flex: 1, justifyContent: 'center' },
   logoSection: { alignItems: 'center', marginBottom: 60, marginTop: 20 },
-  logo: { width: 140, height: 140, marginBottom: 24 },
+  logo: { width: 140, height: 140, marginBottom: 24, borderRadius: 20 },
   mainTitle: { fontSize: 32, fontWeight: 'bold', color: Colors.white, marginBottom: 8 },
   subtitle: { fontSize: 16, color: Colors.lightGray, textAlign: 'center' },
   errorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(196,23,23,0.1)', borderRadius: 12, padding: 12, marginBottom: 24, borderWidth: 1, borderColor: Colors.error, gap: 12 },

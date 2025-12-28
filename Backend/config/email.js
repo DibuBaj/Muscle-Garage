@@ -32,13 +32,17 @@ const sendOTPEmail = async (email, otp) => {
     console.log(`OTP for ${email}: ${otp}`);
     console.log(`========================================\n`);
 
+    const fs = require('fs');
+    const logoPath = path.join(__dirname, '../../Frontend/muscle-garage/assets/images/logo.png');
+    const logoExists = fs.existsSync(logoPath);
+
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
         subject: 'Muscle Garage - Verify Your Email',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFFFFF; padding: 40px; text-align: center;">
-                <img src="cid:logo" alt="Muscle Garage Logo" style="width: 120px; height: 120px; margin-bottom: 30px;">
+                ${logoExists ? '<img src="cid:logo" alt="Muscle Garage Logo" style="width: 120px; height: 120px; margin-bottom: 30px;">' : '<h1 style="color: #000000; margin-bottom: 30px;">💪 MUSCLE GARAGE</h1>'}
                 
                 <h2 style="color: #000000; margin: 20px 0; font-size: 24px;">Email Verification</h2>
                 <p style="color: #000000; margin: 15px 0; font-size: 16px;">Your OTP Code:</p>
@@ -51,13 +55,13 @@ const sendOTPEmail = async (email, otp) => {
                 <p style="color: #666666; margin-top: 30px; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
             </div>
         `,
-        attachments: [
+        attachments: logoExists ? [
             {
                 filename: 'logo.png',
-                path: path.join(__dirname, '../../Frontend/muscle-garage/assets/images/logo.png'),
+                path: logoPath,
                 cid: 'logo'
             }
-        ]
+        ] : []
     };
 
     try {

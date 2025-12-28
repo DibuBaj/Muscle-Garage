@@ -11,7 +11,7 @@ export default function TabLayout() {
 
   useEffect(() => {
     if (!loading && !isAuthenticating && !user) {
-      router.replace('/login');
+      router.replace('/auth-choice');
     }
   }, [user, loading, isAuthenticating]);
 
@@ -56,6 +56,15 @@ export default function TabLayout() {
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size || 24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="membership"
+        options={{
+          title: 'Membership',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="card" size={size || 24} color={color} />
           ),
         }}
       />

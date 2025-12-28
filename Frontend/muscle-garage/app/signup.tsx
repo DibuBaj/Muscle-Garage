@@ -28,7 +28,7 @@ WebBrowser.maybeCompleteAuthSession();
 const GOOGLE_CLIENT_ID = Platform.select({
   web: '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com', // Web
   ios: '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com', // iOS
-  android: '532915510052-bph260218qunsqu4o35v6mijf9at3nfh.apps.googleusercontent.com', // Android
+  android: '532915510052-h9jt2k68422tq8eum7jop2fmb2qrivvc.apps.googleusercontent.com', // Android
 }) as string;
 
 export default function SignupScreen() {
@@ -579,7 +579,7 @@ export default function SignupScreen() {
           {step === 1 && (
             <View style={styles.loginContainer}>
               <Text style={styles.loginText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.push('/login' as any)}>
+              <TouchableOpacity onPress={() => router.push('/auth-choice' as any)}>
                 <Text style={styles.loginLink}>Login</Text>
               </TouchableOpacity>
             </View>
@@ -610,6 +610,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     marginBottom: 16,
+    borderRadius: 20,
   },
   title: {
     fontSize: 28,

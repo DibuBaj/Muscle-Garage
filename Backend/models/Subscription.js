@@ -34,6 +34,25 @@ const subscriptionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    status: {
+      type: String,
+      enum: ['active', 'pause'],
+      default: 'active',
+    },
+    pauseInfo: {
+      pauseStartDate: {
+        type: Date,
+        default: null,
+      },
+      pauseEndDate: {
+        type: Date,
+        default: null,
+      },
+      lastPauseDate: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   { timestamps: true }
 );

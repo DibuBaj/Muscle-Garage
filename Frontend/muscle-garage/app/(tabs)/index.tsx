@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '@/constants/api';
 import axios, { AxiosError } from 'axios';
-import SubscriptionModal from '@/components/subscription-modal';
 import SubscriptionProgressBar from '@/components/subscription-progress-bar';
 
 interface Subscription {
@@ -17,6 +16,12 @@ interface Subscription {
   startDate: string | null;
   endDate: string | null;
   hasSubscribedBefore: boolean;
+  status: 'active' | 'pause';
+  pauseInfo?: {
+    pauseStartDate: string | null;
+    pauseEndDate: string | null;
+    lastPauseDate: string | null;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -26,11 +31,17 @@ export default function DashboardScreen() {
   const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     fetchSubscription();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Dashboard focused - refreshing subscription data');
+      fetchSubscription();
+    }, [])
+  );
 
   const fetchSubscription = async () => {
     try {
@@ -55,13 +66,8 @@ export default function DashboardScreen() {
     }
   };
 
-  const handleSubscriptionSuccess = async () => {
-    console.log('Subscription success callback triggered');
-    // Small delay to ensure backend has processed the subscription
-    await new Promise(resolve => setTimeout(resolve, 500));
-    console.log('Fetching updated subscription data');
-    await fetchSubscription();
-    console.log('Subscription data refetched');
+  const handleMembershipPress = () => {
+    router.push('/(tabs)/membership');
   };
 
   const handleLogout = async () => {
@@ -113,7 +119,7 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <>
-            {isSubscriptionActive && (
+            {isSubscriptionActive && (!subscription?.status || subscription?.status === 'active') && (
               <View style={styles.subscriptionCard}>
                 <View style={styles.subscriptionHeader}>
                   <View style={styles.subscriptionHeaderContent}>
@@ -129,6 +135,26 @@ export default function DashboardScreen() {
               </View>
             )}
 
+            {isSubscriptionActive && subscription?.status === 'pause' && (
+              <View style={styles.pausedSubscriptionCard}>
+                <View style={styles.pausedHeader}>
+                  <View style={styles.pausedHeaderContent}>
+                    <Ionicons name="pause-circle" size={24} color="#FFC107" />
+                    <Text style={styles.pausedStatus}>Subscription Paused</Text>
+                  </View>
+                </View>
+                <View style={styles.pausedInfo}>
+                  <Text style={styles.pausedInfoText}>
+                    Your subscription is paused until {subscription.pauseInfo?.pauseEndDate ? new Date(subscription.pauseInfo.pauseEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                  </Text>
+                </View>
+                <SubscriptionProgressBar
+                  daysLeft={subscription?.daysLeft || 0}
+                  totalDays={subscription?.totalDays || 0}
+                />
+              </View>
+            )}
+
             {needsSubscription && (
               <View style={styles.subscriptionPromptCard}>
                 {/* <Ionicons name="notifications-outline" size={32} color={Colors.primary} style={styles.promptIcon} /> */}
@@ -136,7 +162,7 @@ export default function DashboardScreen() {
                 <Text style={styles.promptSubtitle}>Choose a plan and get started with your fitness journey</Text>
                 <TouchableOpacity 
                   style={styles.promptButton}
-                  onPress={() => setModalVisible(true)}
+                  onPress={handleMembershipPress}
                 >
                   <Text style={styles.promptButtonText}>Subscribe Now</Text>
                 </TouchableOpacity>
@@ -150,7 +176,7 @@ export default function DashboardScreen() {
                 <Text style={styles.promptSubtitle}>Your subscription has expired. Renew now to continue</Text>
                 <TouchableOpacity 
                   style={styles.promptButton}
-                  onPress={() => setModalVisible(true)}
+                  onPress={handleMembershipPress}
                 >
                   <Text style={styles.promptButtonText}>Renew Now</Text>
                 </TouchableOpacity>
@@ -164,7 +190,7 @@ export default function DashboardScreen() {
                 <Text style={styles.promptSubtitle}>Choose a plan and get started with your fitness journey</Text>
                 <TouchableOpacity 
                   style={styles.promptButton}
-                  onPress={() => setModalVisible(true)}
+                  onPress={handleMembershipPress}
                 >
                   <Text style={styles.promptButtonText}>Subscribe Now</Text>
                 </TouchableOpacity>
@@ -173,13 +199,6 @@ export default function DashboardScreen() {
           </>
         )}
       </ScrollView>
-
-      <SubscriptionModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        token={token}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
     </View>
   );
 }
@@ -271,6 +290,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.success,
+  },
+  pausedSubscriptionCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FFC107',
+  },
+  pausedHeader: {
+    marginBottom: 16,
+  },
+  pausedHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pausedStatus: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFC107',
+  },
+  pausedInfo: {
+    marginBottom: 16,
+  },
+  pausedInfoText: {
+    fontSize: 13,
+    color: Colors.lightGray,
   },
   subscriptionPromptCard: {
     backgroundColor: 'rgba(229, 122, 37, 0.1)',
