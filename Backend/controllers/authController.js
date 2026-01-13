@@ -18,6 +18,12 @@ exports.sendOTP = async (req, res) => {
   const { username, email, fullname, phone, password, age, weight } = req.body;
 
   try {
+    // Validate required fields
+    if (!username || !email || !fullname || !phone || !password) {
+      console.log('Missing required fields:', { username, email, fullname, phone, password: password ? 'provided' : 'missing' });
+      return res.status(400).json({ message: 'Missing required fields: username, email, fullname, phone, and password' });
+    }
+
     let user = await User.findOne({ $or: [{ email }, { username }] });
     if (user) {
       const field = user.email === email ? 'Email' : 'Username';
@@ -102,6 +108,7 @@ exports.verifyOTP = async (req, res) => {
         memberId: user.memberId,
         username: user.username,
         email: user.email,
+        phone: user.phone,
         fullname: user.fullname,
         age: user.age,
         weight: user.weight,
@@ -164,7 +171,8 @@ exports.signup = async (req, res) => {
         id: user._id,
         memberId: user.memberId,
         username: user.username, 
-        email: user.email, 
+        email: user.email,
+        phone: user.phone,
         fullname: user.fullname,
         age: user.age,
         weight: user.weight,
@@ -195,7 +203,8 @@ exports.login = async (req, res) => {
         id: user._id,
         memberId: user.memberId,
         username: user.username, 
-        email: user.email, 
+        email: user.email,
+        phone: user.phone,
         fullname: user.fullname,
         age: user.age,
         weight: user.weight,
@@ -233,7 +242,6 @@ exports.forgotPassword = async (req, res) => {
     });
 
     await otpDoc.save();
-    console.log('New OTP saved for email:', email, 'OTP:', otp);
 
     // Send OTP email
     try {
@@ -262,7 +270,6 @@ exports.verifyResetOTP = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
-    console.log('Verify Reset OTP request:', { email, otpLength: otp?.length, otp });
     // Verify OTP
     const otpDoc = await OTP.findOne({ email, otp });
     console.log('OTP found in verifyResetOTP:', !!otpDoc);

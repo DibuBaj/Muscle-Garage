@@ -143,8 +143,6 @@ exports.decreaseDaysDaily = async () => {
       subscription.daysLeft = Math.max(0, subscription.daysLeft - 1);
       await subscription.save();
     }
-
-    console.log(`[${new Date().toISOString()}] Updated ${subscriptions.length} subscriptions`);
   } catch (err) {
     console.error('Cron job error:', err);
   }
@@ -155,29 +153,18 @@ exports.pauseSubscription = async (req, res) => {
     const userId = req.user;
     const { pauseStartDate, pauseEndDate } = req.body;
 
-    console.log('Pause request received:');
-    console.log('User ID:', userId);
-    console.log('Pause Start Date:', pauseStartDate);
-    console.log('Pause End Date:', pauseEndDate);
-
     // Validate dates
     if (!pauseStartDate || !pauseEndDate) {
-      console.log('Missing dates');
       return res.status(400).json({ success: false, message: 'Pause dates are required' });
     }
 
     const startDate = new Date(pauseStartDate);
     const endDate = new Date(pauseEndDate);
 
-    console.log('Parsed Start Date:', startDate);
-    console.log('Parsed End Date:', endDate);
-
     // Check date range (1-7 days)
     const daysDifference = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    console.log('Days difference:', daysDifference);
     
     if (daysDifference < 1 || daysDifference > 7) {
-      console.log('Invalid day difference');
       return res.status(400).json({ 
         success: false, 
         message: 'Pause duration must be between 1 and 7 days' 
@@ -187,17 +174,11 @@ exports.pauseSubscription = async (req, res) => {
     // Find subscription
     const subscription = await Subscription.findOne({ user: userId });
     if (!subscription) {
-      console.log('Subscription not found');
       return res.status(400).json({ success: false, message: 'Subscription not found' });
     }
 
-    console.log('Subscription found:', subscription._id);
-    console.log('Days Left:', subscription.daysLeft);
-    console.log('Pause Info:', subscription.pauseInfo);
-
     // Check if subscription is active
     if (subscription.daysLeft <= 0) {
-      console.log('No active subscription to pause');
       return res.status(400).json({ success: false, message: 'No active subscription to pause' });
     }
 
@@ -205,10 +186,7 @@ exports.pauseSubscription = async (req, res) => {
     if (subscription.pauseInfo && subscription.pauseInfo.lastPauseDate) {
       const lastPauseDate = new Date(subscription.pauseInfo.lastPauseDate);
       const daysSinceLastPause = Math.floor((new Date() - lastPauseDate) / (1000 * 60 * 60 * 24));
-      console.log('Last pause date:', lastPauseDate);
-      console.log('Days since last pause:', daysSinceLastPause);
       if (daysSinceLastPause < 30) {
-        console.log('Pause used too recently');
         return res.status(400).json({ 
           success: false, 
           message: `Pause can only be used once per month. Last used ${daysSinceLastPause} days ago. Please contact gym administration for longer pauses.` 
@@ -223,7 +201,6 @@ exports.pauseSubscription = async (req, res) => {
     subscription.pauseInfo.lastPauseDate = new Date();
 
     await subscription.save();
-    console.log('Subscription paused successfully');
 
     res.status(200).json({
       success: true,

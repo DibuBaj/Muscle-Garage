@@ -15,6 +15,7 @@ import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import SubscriptionProgressBar from '@/components/subscription-progress-bar';
 import PauseSubscriptionModal from '@/components/pause-subscription-modal';
+import ToastNotification from '@/components/toast-notification';
 
 interface SubscriptionPlan {
   id: string;
@@ -192,27 +193,22 @@ export default function MembershipScreen() {
 
   return (
     <View style={styles.container}>
+      <ToastNotification
+        visible={!!successMessage}
+        message={successMessage}
+        type="success"
+      />
+      <ToastNotification
+        visible={!!errorMessage}
+        message={errorMessage}
+        type="error"
+      />
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Membership</Text>
         </View>
-
-        {/* Success Message */}
-        {successMessage ? (
-          <View style={styles.successBanner}>
-            <Ionicons name="checkmark-circle" size={24} color={Colors.white} />
-            <Text style={styles.successText}>{successMessage}</Text>
-          </View>
-        ) : null}
-
-        {/* Error Message */}
-        {errorMessage ? (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={24} color={Colors.white} />
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
-        ) : null}
 
         {loading ? (
           <View style={styles.loadingContainer}>

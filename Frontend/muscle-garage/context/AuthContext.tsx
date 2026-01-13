@@ -107,12 +107,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setError(null);
       setIsAuthenticating(true);
       console.log('Sending OTP to:', `${API_URL}/auth/send-otp`);
+      console.log('Request data:', JSON.stringify(data, null, 2));
       
       const response = await axios.post(`${API_URL}/auth/send-otp`, data);
       console.log('OTP sent:', response.data);
       return response.data.email;
     } catch (err: any) {
       console.error('Send OTP error:', err);
+      console.error('Error response data:', err.response?.data);
+      console.error('Error status:', err.response?.status);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to send OTP.';
       setError(errorMessage);
       throw new Error(errorMessage);

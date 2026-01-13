@@ -33,10 +33,11 @@ const GOOGLE_CLIENT_ID = Platform.select({
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { sendOTP, isAuthenticating, googleAuth } = useAuth();
+  const { sendOTP, isAuthenticating, googleAuth, error: authError } = useAuth();
   const [step, setStep] = useState(1);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
+  const [signupError, setSignupError] = useState('');
   const scrollViewRef = React.useRef<ScrollView>(null);
   const inputRefs = React.useRef<Record<string, View>>({});
 
@@ -51,6 +52,12 @@ export default function SignupScreen() {
       handleGoogleSignup(authentication?.accessToken);
     }
   }, [response]);
+  
+  React.useEffect(() => {
+    if (authError) {
+      setSignupError(authError);
+    }
+  }, [authError]);
   
   const [formData, setFormData] = useState({
     username: '',
@@ -220,20 +227,31 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!validateStep3()) return;
+    
+    setSignupError('');
 
     try {
-      const email = await sendOTP({
+      const otpData: any = {
         username: formData.username,
         email: formData.email,
         fullname: formData.fullname,
         phone: formData.phone,
-        password: formData.password,
-        age: formData.age ? Number(formData.age) : undefined,
-        weight: formData.weight ? Number(formData.weight) : undefined
-      });
+        password: formData.password
+      };
+
+      // Only add age and weight if they have valid values
+      if (formData.age && !isNaN(Number(formData.age))) {
+        otpData.age = Number(formData.age);
+      }
+      if (formData.weight && !isNaN(Number(formData.weight))) {
+        otpData.weight = Number(formData.weight);
+      }
+
+      const email = await sendOTP(otpData);
       router.push({ pathname: '/verify-otp', params: { email } });
     } catch (error: any) {
-      Alert.alert('Signup Failed', error.message);
+      console.log('Signup error caught:', error.message);
+      setSignupError(error.message);
     }
   };
 
@@ -330,6 +348,13 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.formContainer}>
+          {signupError ? (
+            <View style={styles.errorAlert}>
+              <Ionicons name="alert-circle" size={20} color={Colors.white} />
+              <Text style={styles.errorAlertText}>{signupError}</Text>
+            </View>
+          ) : null}
+
           {/* Step 1: Basic Info */}
           {step === 1 && (
             <>
