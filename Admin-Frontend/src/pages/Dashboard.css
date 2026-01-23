@@ -1,0 +1,25 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.dashboard h1 {
+  color: var(--text-color);
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 16px;
+}
+
+.dashboard-content {
+  background-color: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.dashboard-content p {
+  font-size: 17px;
+  color: #666;
+  margin: 8px 0;
+}

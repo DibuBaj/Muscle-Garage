@@ -469,3 +469,68 @@ exports.completeGoogleOnboarding = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to complete onboarding' });
   }
 };
+
+// Admin Login
+exports.adminLogin = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
+    }
+
+    const adminEmail = (process.env.EMAIL_ADMIN || '').trim();
+    const adminPassword = (process.env.ADMIN_PASS || '').trim();
+
+    const receivedEmail = (email || '').trim();
+    const receivedPassword = (password || '').trim();
+
+    // Debug logging with detailed comparison
+    console.log('\n========== Admin Login Attempt ==========');
+    console.log('Received - Email:', `"${receivedEmail}"`, '| Length:', receivedEmail.length);
+    console.log('Received - Password:', `"${receivedPassword}"`, '| Length:', receivedPassword.length);
+    console.log('Expected - Email:', `"${adminEmail}"`, '| Length:', adminEmail.length);
+    console.log('Expected - Password:', `"${adminPassword}"`, '| Length:', adminPassword.length);
+    
+    const emailLower = receivedEmail.toLowerCase();
+    const adminEmailLower = adminEmail.toLowerCase();
+    console.log('Email Match (case-insensitive):', emailLower === adminEmailLower);
+    console.log('Password Match (exact):', receivedPassword === adminPassword);
+    console.log('=========================================\n');
+
+    // Compare credentials
+    const emailMatch = receivedEmail.toLowerCase() === adminEmailLower;
+    const passwordMatch = receivedPassword === adminPassword;
+
+    if (!emailMatch || !passwordMatch) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid email or password',
+        debug: {
+          emailMatch,
+          passwordMatch
+        }
+      });
+    }
+
+    // Create JWT token for admin session
+    const token = jwt.sign(
+      { email: adminEmail, isAdmin: true },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    console.log('Admin login successful');
+    res.status(200).json({
+      success: true,
+      message: 'Admin login successful',
+      token,
+      email: adminEmail
+    });
+  } catch (err) {
+    console.error('Admin Login Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to login' });
+  }
+};
+

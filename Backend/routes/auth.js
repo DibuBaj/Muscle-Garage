@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { signup, login, sendOTP, verifyOTP, resendOTP, forgotPassword, verifyResetOTP, resetPassword, googleAuth, completeGoogleOnboarding } = require('../controllers/authController');
+const { signup, login, sendOTP, verifyOTP, resendOTP, forgotPassword, verifyResetOTP, resetPassword, googleAuth, completeGoogleOnboarding, adminLogin } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/signup', signup);
@@ -13,6 +13,7 @@ router.post('/verify-reset-otp', verifyResetOTP);
 router.post('/reset-password', resetPassword);
 router.post('/google-auth', googleAuth);
 router.post('/complete-google-onboarding', completeGoogleOnboarding);
+router.post('/admin-login', adminLogin);
 
 router.get('/profile', authMiddleware, (req, res) => {
   res.json({ userId: req.user, message: "Access granted!" });

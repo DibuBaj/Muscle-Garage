@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
     // secure: false,
     service: "gmail",
     auth: {
-        user: process.env.EMAIL_USER,
+        user: process.env.EMAIL_ADMIN,
         pass: process.env.EMAIL_PASS
     }
 });

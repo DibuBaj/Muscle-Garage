@@ -1,0 +1,25 @@
+.user-management {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.user-management h1 {
+  color: var(--text-color);
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 16px;
+}
+
+.user-management-content {
+  background-color: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.user-management-content p {
+  font-size: 17px;
+  color: #666;
+  margin: 8px 0;
+}
