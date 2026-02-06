@@ -35,22 +35,19 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+.logo-image {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .logo-text {
   font-size: 24px;
   font-weight: 700;
   color: var(--primary-color);
-}
-
-.logo-badge {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .topbar-right {

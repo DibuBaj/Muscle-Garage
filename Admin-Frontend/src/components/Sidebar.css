@@ -2,12 +2,14 @@
   width: 250px;
   background-color: white;
   border-right: 1px solid var(--border-color);
-  padding: 32px 0;
-  height: calc(100vh - 80px);
+  padding: 0;
+  height: auto;
   overflow-y: auto;
   transition: transform 0.3s ease, width 0.3s ease;
   position: relative;
   z-index: 50;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar.closed {
@@ -16,12 +18,48 @@
   padding: 0;
 }
 
+.sidebar-logo {
+  padding: 32px 16px 0px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.sidebar-logo-img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.sidebar-admin-badge {
+  padding: 6px 14px;
+  background-color: var(--primary-color);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 6px 14px rgba(255, 165, 0, 0.25);
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 16px;
+  gap: 4px;
+  padding: 16px;
+  flex: 1;
 }
+
+.sidebar-bottom {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 
 .nav-link {
   display: flex;
@@ -52,6 +90,20 @@
 .nav-link svg {
   stroke: currentColor;
   flex-shrink: 0;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: 'Poppins', sans-serif;
+}
+
+.logout-btn:hover {
+  background-color: #fee;
+  color: #d32f2f;
 }
 
 /* Scrollbar styling */

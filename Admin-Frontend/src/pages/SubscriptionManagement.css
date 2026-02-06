@@ -1,0 +1,402 @@
+.subscription-management {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.subscription-management-content {
+  background-color: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.subscription-management .header {
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 16px;
+}
+
+.subscription-management .header h1 {
+  color: var(--text-color);
+  margin: 0 0 8px 0;
+  font-size: 28px;
+}
+
+.subscription-management .header p {
+  color: #666;
+  margin: 0;
+  font-size: 14px;
+}
+
+.subscription-management .controls {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.subscription-management .search-input,
+.subscription-management .filter-select {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.subscription-management .search-input {
+  flex: 1;
+  min-width: 250px;
+}
+
+.subscription-management .filter-select {
+  min-width: 150px;
+  cursor: pointer;
+}
+
+.subscription-management .search-input:focus,
+.subscription-management .filter-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(229, 122, 37, 0.1);
+}
+
+.subscription-management .subscriptions-table {
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+
+.subscription-management table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.subscription-management table thead {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #ddd;
+}
+
+.subscription-management table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.subscription-management table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.subscription-management table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.subscription-management .user-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.subscription-management .phone-number {
+  font-family: 'Courier New', monospace;
+  color: #555;
+}
+
+.subscription-management .status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.subscription-management .days-left {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.subscription-management .actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.subscription-management .btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.subscription-management .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.subscription-management .btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.subscription-management .btn-primary:hover:not(:disabled) {
+  background-color: #d46d2f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(229, 122, 37, 0.3);
+}
+
+.subscription-management .btn-warning {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.subscription-management .btn-warning:hover:not(:disabled) {
+  background-color: #e0a800;
+  transform: translateY(-2px);
+}
+
+.subscription-management .btn-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.subscription-management .btn-success:hover:not(:disabled) {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.subscription-management .btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.subscription-management .btn-secondary:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+.subscription-management .btn-sm {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.subscription-management .no-data {
+  text-align: center;
+  padding: 32px 12px !important;
+  color: #999;
+}
+
+.subscription-management .loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 16px;
+  color: #666;
+}
+
+.subscription-management .error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #f5c6cb;
+}
+
+.subscription-management .success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #c3e6cb;
+}
+
+/* Modal Styles */
+.subscription-management .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.subscription-management .modal {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.subscription-management .modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subscription-management .modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.subscription-management .close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.subscription-management .close-btn:hover {
+  color: #333;
+}
+
+.subscription-management .modal-body {
+  padding: 20px;
+}
+
+.subscription-management .user-info {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.subscription-management .form-group {
+  margin-bottom: 20px;
+}
+
+.subscription-management .form-group label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.subscription-management .form-group input[type="date"],
+.subscription-management .form-group input[type="number"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.subscription-management .form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(229, 122, 37, 0.1);
+}
+
+.subscription-management .plans-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.subscription-management .plan-option {
+  padding: 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.subscription-management .plan-option:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(229, 122, 37, 0.05);
+}
+
+.subscription-management .plan-option.selected {
+  border-color: var(--primary-color);
+  background-color: rgba(229, 122, 37, 0.1);
+}
+
+.subscription-management .plan-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.subscription-management .plan-days {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.subscription-management .plan-price {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.subscription-management .divider {
+  text-align: center;
+  margin: 20px 0;
+  color: #999;
+  position: relative;
+}
+
+.subscription-management .divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background-color: #ddd;
+  z-index: 0;
+}
+
+.subscription-management .divider {
+  z-index: 1;
+  background-color: white;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 16px;
+}
+
+.subscription-management .info-box {
+  background-color: #f0f8ff;
+  border-left: 4px solid var(--primary-color);
+  padding: 12px;
+  border-radius: 4px;
+  margin-top: 16px;
+}
+
+.subscription-management .info-box p {
+  margin: 0;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.subscription-management .modal-footer {
+  padding: 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.subscription-management .modal-footer .btn {
+  min-width: 100px;
+}
+

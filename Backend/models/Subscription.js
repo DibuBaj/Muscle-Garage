@@ -18,10 +18,6 @@ const subscriptionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    daysLeft: {
-      type: Number,
-      default: 0,
-    },
     startDate: {
       type: Date,
       default: null,

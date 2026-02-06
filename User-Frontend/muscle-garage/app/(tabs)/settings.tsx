@@ -7,8 +7,11 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -27,15 +30,17 @@ interface UserDetails {
 }
 
 export default function SettingsScreen() {
-  const { user, logout, token } = useAuth();
+  const { user, logout, token, updateUserContext } = useAuth();
   const router = useRouter();
   
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<UserDetails>({
     id: user?.id || '',
@@ -61,7 +66,15 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     fetchUserProfile();
+    requestImagePermissions();
   }, []);
+
+  const requestImagePermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      console.log('Image picker permission not granted');
+    }
+  };
 
   const fetchUserProfile = async () => {
     try {
@@ -83,6 +96,7 @@ export default function SettingsScreen() {
           age: userData.age || 0,
           weight: userData.weight || 0,
         });
+        setProfilePicture(userData.profilePicture || null);
       }
     } catch (error: any) {
       console.error('Fetch profile error:', error);
@@ -97,6 +111,7 @@ export default function SettingsScreen() {
           age: user.age || 0,
           weight: user.weight || 0,
         });
+        setProfilePicture(user.profilePicture || null);
       }
     } finally {
       setProfileLoading(false);
@@ -207,6 +222,106 @@ export default function SettingsScreen() {
     }
   };
 
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Pick image error:', error);
+      setErrorMessage('Failed to select image');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    try {
+      setUploadingImage(true);
+
+      // Create form data
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'profile.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('profilePicture', {
+        uri,
+        name: filename,
+        type,
+      } as any);
+
+      const response = await axios.post(
+        `${API_URL}/user/profile-picture`,
+        formData,
+        {
+          headers: {
+            Authorization: token,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setProfilePicture(response.data.profilePicture);
+        await updateUserContext({ profilePicture: response.data.profilePicture });
+        setSuccessMessage('Profile picture updated successfully!');
+        setTimeout(() => setSuccessMessage(''), 2000);
+      }
+    } catch (error: any) {
+      console.error('Upload image error:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to upload image';
+      setErrorMessage(errorMsg);
+      setTimeout(() => setErrorMessage(''), 3000);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const deleteImage = async () => {
+    Alert.alert(
+      'Delete Profile Picture',
+      'Are you sure you want to remove your profile picture?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setUploadingImage(true);
+              const response = await axios.delete(`${API_URL}/user/profile-picture`, {
+                headers: {
+                  Authorization: token,
+                },
+              });
+
+              if (response.data.success) {
+                await updateUserContext({ profilePicture: undefined });
+                setProfilePicture(null);
+                setSuccessMessage('Profile picture removed successfully!');
+                setTimeout(() => setSuccessMessage(''), 2000);
+              }
+            } catch (error: any) {
+              console.error('Delete image error:', error);
+              const errorMsg = error.response?.data?.message || 'Failed to delete image';
+              setErrorMessage(errorMsg);
+              setTimeout(() => setErrorMessage(''), 3000);
+            } finally {
+              setUploadingImage(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ToastNotification
@@ -231,6 +346,63 @@ export default function SettingsScreen() {
           </View>
         ) : (
           <>
+            {/* Profile Picture Section */}
+            <View style={styles.profilePictureSection}>
+              <View style={styles.profilePictureContainer}>
+                {uploadingImage ? (
+                  <View style={styles.profilePicture}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                  </View>
+                ) : profilePicture ? (
+                  <Image
+                    source={{ uri: profilePicture }}
+                    style={styles.profilePicture}
+                  />
+                ) : (
+                  <View style={styles.profilePicturePlaceholder}>
+                    <Ionicons name="person" size={60} color={Colors.darkGray} />
+                  </View>
+                )}
+                
+                {!uploadingImage && (
+                  <TouchableOpacity
+                    style={styles.editIconButton}
+                    onPress={pickImage}
+                  >
+                    <Ionicons name="camera" size={20} color={Colors.white} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.profilePictureInfo}>
+                <Text style={styles.profileName}>{formData.fullname}</Text>
+                <Text style={styles.profileUsername}>@{formData.username}</Text>
+                
+                <View style={styles.profilePictureActions}>
+                  <TouchableOpacity
+                    style={styles.changePictureButton}
+                    onPress={pickImage}
+                    disabled={uploadingImage}
+                  >
+                    <Ionicons name="image-outline" size={18} color={Colors.white} />
+                    <Text style={styles.changePictureText}>
+                      {profilePicture ? 'Change Photo' : 'Upload Photo'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {profilePicture && (
+                    <TouchableOpacity
+                      style={styles.removePictureButton}
+                      onPress={deleteImage}
+                      disabled={uploadingImage}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </View>
+
             {/* User Profile Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -586,6 +758,97 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
+  },
+  profilePictureSection: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  profilePictureContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  profilePicture: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: Colors.inputBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.primary,
+  },
+  profilePicturePlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: Colors.inputBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#333333',
+  },
+  editIconButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.cardBackground,
+  },
+  profilePictureInfo: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  profileUsername: {
+    fontSize: 14,
+    color: Colors.lightGray,
+    marginBottom: 16,
+  },
+  profilePictureActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  changePictureButton: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  changePictureText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  removePictureButton: {
+    backgroundColor: 'rgba(196, 23, 23, 0.12)',
+    borderWidth: 1,
+    borderColor: Colors.error,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   successBanner: {
     backgroundColor: 'rgba(40, 167, 69, 0.95)',

@@ -24,10 +24,28 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields: username, email, fullname, phone, and password' });
     }
 
-    let user = await User.findOne({ $or: [{ email }, { username }] });
-    if (user) {
-      const field = user.email === email ? 'Email' : 'Username';
-      return res.status(400).json({ message: `${field} already exists` });
+    const userByEmail = await User.findOne({ email });
+
+    if (userByEmail) {
+      if (userByEmail.isMobileUser === false) {
+        // Admin-created user: allow OTP flow, but ensure username is unique for other users
+        console.log('Admin-created user found with email:', email, 'isMobileUser:', userByEmail.isMobileUser);
+        const existingUsername = await User.findOne({ username, _id: { $ne: userByEmail._id } });
+        if (existingUsername) {
+          console.log('Username already exists for another user:', username);
+          return res.status(400).json({ message: 'Username already exists' });
+        }
+      } else {
+        console.log('Email already exists and user is mobile user:', email);
+        return res.status(400).json({ message: 'Email already exists' });
+      }
+    } else {
+      // New email: ensure username unique
+      const existingUsername = await User.findOne({ username });
+      if (existingUsername) {
+        console.log('Username already exists:', username);
+        return res.status(400).json({ message: 'Username already exists' });
+      }
     }
 
     await OTP.deleteMany({ email });
@@ -49,13 +67,20 @@ exports.sendOTP = async (req, res) => {
     });
 
     await otpDoc.save();
+    console.log('OTP saved to database for email:', email, 'OTP:', otp);
     
     try {
       await sendOTPEmail(email, otp);
-      res.status(200).json({ message: 'OTP sent successfully', email });
+      console.log('Email sent successfully to:', email);
+      res.status(200).json({ 
+        success: true,
+        message: 'OTP sent successfully', 
+        email 
+      });
     } catch (emailError) {
       console.error('Failed to send email, but OTP saved:', emailError.message);
       res.status(200).json({ 
+        success: true,
         message: 'OTP generated (email delivery pending)', 
         email,
         note: 'Check backend console for OTP'
@@ -63,7 +88,11 @@ exports.sendOTP = async (req, res) => {
     }
   } catch (err) {
     console.error('SendOTP Error:', err);
-    res.status(500).json({ message: 'Failed to send OTP' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to send OTP',
+      error: err.message 
+    });
   }
 };
 
@@ -71,31 +100,56 @@ exports.verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
+    console.log('Verifying OTP for email:', email);
+    
     const otpDoc = await OTP.findOne({ email, otp });
     if (!otpDoc) {
+      console.log('Invalid or expired OTP for email:', email);
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
-    const memberId = await generateMemberId();
-    const userData = {
-      memberId,
-      username: otpDoc.userData.username,
-      email,
-      fullname: otpDoc.userData.fullname,
-      password: otpDoc.userData.password,
-      age: otpDoc.userData.age
-    };
+    console.log('OTP found, processing user...');
+    let user = await User.findOne({ email });
 
-    if (otpDoc.userData.phone) {
-      userData.phone = otpDoc.userData.phone;
+    if (user && user.isMobileUser === false) {
+      // Activate admin-created user
+      console.log('Updating admin-created user with isMobileUser=false, email:', email);
+      user.username = otpDoc.userData.username;
+      user.fullname = otpDoc.userData.fullname;
+      user.password = otpDoc.userData.password;
+      user.age = otpDoc.userData.age;
+      user.phone = otpDoc.userData.phone || user.phone;
+      user.weight = otpDoc.userData.weight || null;
+      user.isMobileUser = true;
+      await user.save();
+      console.log('Admin-created user activated successfully, memberId:', user.memberId);
+    } else if (!user) {
+      console.log('Creating new user with email:', email);
+      const memberId = await generateMemberId();
+      const userData = {
+        memberId,
+        username: otpDoc.userData.username,
+        email,
+        fullname: otpDoc.userData.fullname,
+        password: otpDoc.userData.password,
+        age: otpDoc.userData.age
+      };
+
+      if (otpDoc.userData.phone) {
+        userData.phone = otpDoc.userData.phone;
+      }
+
+      if (otpDoc.userData.weight) {
+        userData.weight = otpDoc.userData.weight;
+      }
+
+      user = new User(userData);
+      await user.save();
+      console.log('New user created successfully, memberId:', user.memberId);
+    } else if (user.isMobileUser === true) {
+      console.log('User already exists and is mobile user, returning error');
+      return res.status(400).json({ message: 'User already registered' });
     }
-
-    if (otpDoc.userData.weight) {
-      userData.weight = otpDoc.userData.weight;
-    }
-
-    const user = new User(userData);
-    await user.save();
 
     await OTP.deleteMany({ email });
 
@@ -116,7 +170,7 @@ exports.verifyOTP = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err.message);
+    console.error('VerifyOTP Error:', err);
     res.status(500).send('Server Error');
   }
 };
@@ -125,8 +179,11 @@ exports.resendOTP = async (req, res) => {
   const { email } = req.body;
 
   try {
+    console.log('Resending OTP to:', email);
+    
     const existingOTP = await OTP.findOne({ email });
     if (!existingOTP) {
+      console.log('No pending verification found for:', email);
       return res.status(400).json({ message: 'No pending verification found. Please sign up again.' });
     }
 
@@ -134,13 +191,29 @@ exports.resendOTP = async (req, res) => {
     existingOTP.otp = otp;
     existingOTP.createdAt = new Date();
     await existingOTP.save();
+    console.log('New OTP generated for:', email);
 
-    await sendOTPEmail(email, otp);
-
-    res.status(200).json({ message: 'OTP resent successfully' });
+    try {
+      await sendOTPEmail(email, otp);
+      console.log('Resent OTP email to:', email);
+      res.status(200).json({ 
+        success: true,
+        message: 'OTP resent successfully' 
+      });
+    } catch (emailError) {
+      console.error('Failed to send resend email, but OTP saved:', emailError.message);
+      res.status(200).json({ 
+        success: true,
+        message: 'OTP generated (email delivery pending)'
+      });
+    }
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ message: 'Failed to resend OTP' });
+    console.error('ResendOTP Error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to resend OTP',
+      error: err.message 
+    });
   }
 };
 
@@ -148,16 +221,64 @@ exports.signup = async (req, res) => {
   const { username, email, fullname, password, age, weight } = req.body;
 
   try {
-    let user = await User.findOne({ $or: [{ email }, { username }] });
+    let user = await User.findOne({ email });
+    
     if (user) {
+      // If user exists and was created by admin (isMobileUser = false), allow signup and update data
+      if (user.isMobileUser === false) {
+        // Admin-created user is now signing up from mobile
+        // Update user data with new information provided
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Update only provided fields (username and password are required for signup)
+        user.username = username;
+        user.password = hashedPassword;
+        user.isMobileUser = true; // Mark as mobile user now
+        
+        // Update other fields if provided
+        if (fullname) user.fullname = fullname;
+        if (age) user.age = age;
+        if (weight) user.weight = weight;
+        
+        // Note: Don't update email or phone as email is the identifier
+        
+        await user.save();
+        
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        res.status(201).json({ 
+          token, 
+          user: { 
+            id: user._id,
+            memberId: user.memberId,
+            username: user.username, 
+            email: user.email,
+            phone: user.phone,
+            fullname: user.fullname,
+            age: user.age,
+            weight: user.weight,
+            createdAt: user.createdAt
+          },
+          message: 'Welcome back! Your profile has been activated.'
+        });
+        return;
+      }
+      
+      // Regular user (created via mobile) already exists
       const field = user.email === email ? 'Email' : 'Username';
       return res.status(400).json({ message: `${field} already exists` });
+    }
+
+    // Check if username exists (for new signup)
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(400).json({ message: 'Username already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const memberId = await generateMemberId();
 
-    const userData = { memberId, username, email, fullname, password: hashedPassword, age };
+    const userData = { memberId, username, email, fullname, password: hashedPassword, age, isMobileUser: true };
     if (weight) userData.weight = weight;
 
     user = new User(userData);
@@ -212,8 +333,8 @@ exports.login = async (req, res) => {
       } 
     });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Login error:', err.message);
+    res.status(500).json({ message: 'Server error. Please try again.' });
   }
 };
 

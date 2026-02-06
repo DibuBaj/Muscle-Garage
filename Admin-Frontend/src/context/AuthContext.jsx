@@ -10,7 +10,8 @@ export const AuthProvider = ({ children }) => {
   // Check if admin is already logged in (from localStorage)
   useEffect(() => {
     const storedAuth = localStorage.getItem('adminAuth');
-    if (storedAuth) {
+    const storedToken = localStorage.getItem('adminToken');
+    if (storedAuth && storedToken) {
       const { email } = JSON.parse(storedAuth);
       setAdminEmail(email);
       setIsAuthenticated(true);
@@ -18,16 +19,18 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (email) => {
+  const login = (email, token) => {
     setAdminEmail(email);
     setIsAuthenticated(true);
     localStorage.setItem('adminAuth', JSON.stringify({ email }));
+    localStorage.setItem('adminToken', token);
   };
 
   const logout = () => {
     setAdminEmail(null);
     setIsAuthenticated(false);
     localStorage.removeItem('adminAuth');
+    localStorage.removeItem('adminToken');
   };
 
   return (

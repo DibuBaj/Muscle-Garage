@@ -16,8 +16,8 @@ const TopBar = ({ onLogout, onToggleSidebar }) => {
           </svg>
         </button>
         <div className="logo">
+          <img src="/logo.png" alt="Muscle Garage Logo" className="logo-image" />
           <span className="logo-text">Muscle Garage</span>
-          <span className="logo-badge">Admin</span>
         </div>
       </div>
 

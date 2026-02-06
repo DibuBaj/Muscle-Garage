@@ -168,7 +168,7 @@ export default function PauseSubscriptionModal({
 
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              ⏸️ You can pause your subscription for 1 to 7 days. This option can be used once per month. For pauses longer than 7 days, please contact Muscle Garage administration.
+              ⏸️ You can pause your subscription for 1 to 7 days. This option can be used once per month. Your subscription end date will be extended by the pause duration. If you resume early, unused pause days will be removed from your end date. For pauses longer than 7 days, please contact Muscle Garage administration.
             </Text>
           </View>
 

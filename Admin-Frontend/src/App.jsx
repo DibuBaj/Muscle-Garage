@@ -5,6 +5,8 @@ import LoginPage from './pages/LoginPage';
 import AdminLayout from './layouts/AdminLayout';
 import Dashboard from './pages/Dashboard';
 import UserManagement from './pages/UserManagement';
+import SubscriptionManagement from './pages/SubscriptionManagement';
+import TrainerManagement from './pages/TrainerManagement';
 import './App.css';
 
 function App() {
@@ -22,6 +24,8 @@ function App() {
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/user-management" element={<UserManagement />} />
+                    <Route path="/subscription-management" element={<SubscriptionManagement />} />
+                    <Route path="/trainer-management" element={<TrainerManagement />} />
                     <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>
                 </AdminLayout>

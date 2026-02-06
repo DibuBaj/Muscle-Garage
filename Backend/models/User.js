@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   authProvider: { type: String, enum: ['email', 'google'], default: 'email' },
   googleId: { type: String, required: false, unique: true, sparse: true },
   profilePicture: { type: String, required: false },
+  isMobileUser: { type: Boolean, default: false }, // false: created by admin, true: created via mobile app signup
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

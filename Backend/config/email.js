@@ -5,30 +5,37 @@ const path = require('path');
 dotenv.config();
 
 const transporter = nodemailer.createTransport({
-    // host: 'smtp.gmail.com',
-    // port: 587,
-    // secure: false,
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
     service: "gmail",
     auth: {
         user: process.env.EMAIL_ADMIN,
         pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
 transporter.verify((error, success) => {
     if (error) {
         console.error('SMTP Connection Error:', error.message);
+        console.error('Please check your EMAIL_ADMIN and EMAIL_PASS in .env file');
+        console.error('Make sure you are using an App Password from Google Account settings');
+    } else {
+        console.log('Email transporter is ready to send emails');
     }
 });
 
 const sendOTPEmail = async (email, otp) => {
 
     const fs = require('fs');
-    const logoPath = path.join(__dirname, '../../Frontend/muscle-garage/assets/images/logo.png');
+    const logoPath = path.join(__dirname, '../../User-Frontend/muscle-garage/assets/images/logo.png');
     const logoExists = fs.existsSync(logoPath);
 
     const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: process.env.EMAIL_ADMIN,
         to: email,
         subject: 'Muscle Garage - Verify Your Email',
         html: `

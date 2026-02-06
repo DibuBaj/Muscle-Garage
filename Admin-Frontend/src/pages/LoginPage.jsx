@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import logo from '../assets/admin_logo.png';
+import logo from '../assets/logo.png';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -28,7 +28,7 @@ const LoginPage = () => {
       });
 
       if (response.data.success) {
-        login(email);
+        login(email, response.data.token);
         navigate('/admin/dashboard');
       } else {
         setError(response.data.message || 'Login failed. Please try again.');

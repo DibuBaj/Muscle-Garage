@@ -26,9 +26,9 @@ WebBrowser.maybeCompleteAuthSession();
 
 // Use appropriate Client ID based on platform
 const GOOGLE_CLIENT_ID = Platform.select({
-  web: '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com', // Web
-  ios: '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com', // iOS
-  android: '532915510052-h9jt2k68422tq8eum7jop2fmb2qrivvc.apps.googleusercontent.com', // Android
+  web: '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com',  
+  ios: '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com',  
+  android: '532915510052-h9jt2k68422tq8eum7jop2fmb2qrivvc.apps.googleusercontent.com',
 }) as string;
 
 export default function SignupScreen() {
@@ -228,6 +228,7 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     if (!validateStep3()) return;
     
+    console.log('Starting signup process...');
     setSignupError('');
 
     try {
@@ -247,10 +248,14 @@ export default function SignupScreen() {
         otpData.weight = Number(formData.weight);
       }
 
+      console.log('Calling sendOTP with data:', otpData);
       const email = await sendOTP(otpData);
+      console.log('OTP sent successfully, received email:', email);
+      console.log('Navigating to verify-otp screen...');
       router.push({ pathname: '/verify-otp', params: { email } });
     } catch (error: any) {
       console.log('Signup error caught:', error.message);
+      console.error('Signup error details:', error);
       setSignupError(error.message);
     }
   };

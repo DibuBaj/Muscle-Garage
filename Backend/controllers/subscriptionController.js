@@ -16,6 +16,48 @@ const SUBSCRIPTION_PLANS = {
   },
 };
 
+/**
+ * Calculate days left considering:
+ * - Subscription start and end dates
+ * - Pause periods (days are not counted during pause)
+ * - Current date
+ */
+const calculateDaysLeft = (subscription) => {
+  if (!subscription.startDate || !subscription.endDate) {
+    return 0;
+  }
+
+  // Ensure dates are proper Date objects
+  const now = new Date();
+  const startDate = subscription.startDate instanceof Date ? subscription.startDate : new Date(subscription.startDate);
+
+  const dayMs = 1000 * 60 * 60 * 24;
+  const totalDays = Number.isFinite(subscription.totalDays)
+    ? subscription.totalDays
+    : Math.ceil((new Date(subscription.endDate).getTime() - startDate.getTime()) / dayMs);
+
+  if (totalDays <= 0) {
+    return 0;
+  }
+
+  const elapsedDays = Math.max(0, Math.floor((now.getTime() - startDate.getTime()) / dayMs));
+
+  let pausedDays = 0;
+  if (subscription.pauseInfo?.pauseStartDate && subscription.pauseInfo?.pauseEndDate) {
+    const pauseStart = new Date(subscription.pauseInfo.pauseStartDate);
+    const pauseEnd = new Date(subscription.pauseInfo.pauseEndDate);
+
+    if (pauseEnd > pauseStart && now > pauseStart) {
+      const pausedUntil = now < pauseEnd ? now : pauseEnd;
+      pausedDays = Math.ceil((pausedUntil.getTime() - pauseStart.getTime()) / dayMs);
+    }
+  }
+
+  const activeElapsedDays = Math.max(0, elapsedDays - pausedDays);
+  const daysLeft = totalDays - activeElapsedDays;
+  return Math.max(0, daysLeft);
+};
+
 exports.getUserSubscription = async (req, res) => {
   try {
     const userId = req.user;
@@ -45,13 +87,16 @@ exports.getUserSubscription = async (req, res) => {
       }
     }
 
+    // Calculate current days left
+    const daysLeft = calculateDaysLeft(subscription);
+
     res.status(200).json({
       success: true,
       subscription: {
         _id: subscription._id,
         membershipId: subscription.membershipId || null,
         totalDays: subscription.totalDays,
-        daysLeft: subscription.daysLeft,
+        daysLeft: daysLeft,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
         hasSubscribedBefore: subscription.hasSubscribedBefore,
@@ -102,12 +147,19 @@ exports.subscribe = async (req, res) => {
 
     // Update subscription
     subscription.totalDays = planDetails.days;
-    subscription.daysLeft = planDetails.days;
     subscription.startDate = startDate;
     subscription.endDate = endDate;
     subscription.hasSubscribedBefore = true;
+    subscription.status = 'active';
+    subscription.pauseInfo = {
+      pauseStartDate: null,
+      pauseEndDate: null,
+      lastPauseDate: null,
+    };
 
     await subscription.save();
+
+    const calculatedDaysLeft = calculateDaysLeft(subscription);
 
     res.status(200).json({
       success: true,
@@ -116,10 +168,12 @@ exports.subscribe = async (req, res) => {
         _id: subscription._id,
         membershipId: subscription.membershipId,
         totalDays: subscription.totalDays,
-        daysLeft: subscription.daysLeft,
+        daysLeft: calculatedDaysLeft,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
         hasSubscribedBefore: subscription.hasSubscribedBefore,
+        status: subscription.status,
+        pauseInfo: subscription.pauseInfo,
         createdAt: subscription.createdAt,
         updatedAt: subscription.updatedAt,
       },
@@ -135,14 +189,10 @@ exports.subscribe = async (req, res) => {
 
 exports.decreaseDaysDaily = async () => {
   try {
-    const subscriptions = await Subscription.find({
-      daysLeft: { $gt: 0 },
-    });
-
-    for (const subscription of subscriptions) {
-      subscription.daysLeft = Math.max(0, subscription.daysLeft - 1);
-      await subscription.save();
-    }
+    // This function is now optional as daysLeft is calculated dynamically
+    // based on startDate, endDate, and pause periods.
+    // Days are automatically counted down based on date comparison.
+    console.log('Daily subscription check executed - daysLeft is calculated dynamically');
   } catch (err) {
     console.error('Cron job error:', err);
   }
@@ -178,7 +228,8 @@ exports.pauseSubscription = async (req, res) => {
     }
 
     // Check if subscription is active
-    if (subscription.daysLeft <= 0) {
+    const daysLeft = calculateDaysLeft(subscription);
+    if (daysLeft <= 0) {
       return res.status(400).json({ success: false, message: 'No active subscription to pause' });
     }
 
@@ -194,13 +245,20 @@ exports.pauseSubscription = async (req, res) => {
       }
     }
 
+    // Extend end date based on pause duration
+    const currentEndDate = new Date(subscription.endDate);
+    currentEndDate.setDate(currentEndDate.getDate() + daysDifference);
+
     // Update subscription
     subscription.status = 'pause';
     subscription.pauseInfo.pauseStartDate = startDate;
     subscription.pauseInfo.pauseEndDate = endDate;
     subscription.pauseInfo.lastPauseDate = new Date();
+    subscription.endDate = currentEndDate; // Extend subscription end date by pause duration
 
     await subscription.save();
+
+    const calculatedDaysLeft = calculateDaysLeft(subscription);
 
     res.status(200).json({
       success: true,
@@ -209,7 +267,7 @@ exports.pauseSubscription = async (req, res) => {
         _id: subscription._id,
         membershipId: subscription.membershipId,
         totalDays: subscription.totalDays,
-        daysLeft: subscription.daysLeft,
+        daysLeft: calculatedDaysLeft,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
         hasSubscribedBefore: subscription.hasSubscribedBefore,
@@ -238,8 +296,31 @@ exports.resumeSubscription = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Subscription is not paused' });
     }
 
+    // If resuming before pause end, remove unused pause days from endDate
+    if (subscription.pauseInfo?.pauseEndDate) {
+      const now = new Date();
+      const pauseStart = subscription.pauseInfo.pauseStartDate
+        ? new Date(subscription.pauseInfo.pauseStartDate)
+        : null;
+      const pauseEnd = new Date(subscription.pauseInfo.pauseEndDate);
+
+      if (now < pauseEnd) {
+        const dayMs = 1000 * 60 * 60 * 24;
+        const effectiveStart = pauseStart && now < pauseStart ? pauseStart : now;
+        const unusedDays = Math.ceil((pauseEnd.getTime() - effectiveStart.getTime()) / dayMs);
+        const currentEndDate = new Date(subscription.endDate);
+        currentEndDate.setDate(currentEndDate.getDate() - unusedDays);
+        subscription.endDate = currentEndDate;
+      }
+    }
+
     subscription.status = 'active';
+    subscription.pauseInfo.pauseStartDate = null;
+    subscription.pauseInfo.pauseEndDate = null;
+
     await subscription.save();
+
+    const calculatedDaysLeft = calculateDaysLeft(subscription);
 
     res.status(200).json({
       success: true,
@@ -248,7 +329,7 @@ exports.resumeSubscription = async (req, res) => {
         _id: subscription._id,
         membershipId: subscription.membershipId,
         totalDays: subscription.totalDays,
-        daysLeft: subscription.daysLeft,
+        daysLeft: calculatedDaysLeft,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
         hasSubscribedBefore: subscription.hasSubscribedBefore,
@@ -261,5 +342,222 @@ exports.resumeSubscription = async (req, res) => {
   } catch (err) {
     console.error('Resume subscription error:', err);
     res.status(500).json({ success: false, message: 'Failed to resume subscription' });
+  }
+};
+
+// Admin: Pause subscription for any user with custom dates
+exports.adminPauseSubscription = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { startDate, endDate } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'Start date and end date are required' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (end <= start) {
+      return res.status(400).json({ success: false, message: 'End date must be after start date' });
+    }
+
+    const subscription = await Subscription.findOne({ user: userId });
+
+    if (!subscription) {
+      return res.status(400).json({ success: false, message: 'Subscription not found for this user' });
+    }
+
+    // Calculate pause duration and extend subscription end date
+    const pauseDuration = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    const currentEndDate = new Date(subscription.endDate);
+    currentEndDate.setDate(currentEndDate.getDate() + pauseDuration);
+
+    subscription.status = 'pause';
+    subscription.pauseInfo = {
+      pauseStartDate: start,
+      pauseEndDate: end,
+      lastPauseDate: subscription.pauseInfo?.lastPauseDate || null,
+    };
+    subscription.endDate = currentEndDate; // Extend subscription end date by pause duration
+
+    await subscription.save();
+
+    const calculatedDaysLeft = calculateDaysLeft(subscription);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subscription paused successfully by admin',
+      subscription: {
+        _id: subscription._id,
+        membershipId: subscription.membershipId,
+        totalDays: subscription.totalDays,
+        daysLeft: calculatedDaysLeft,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
+        status: subscription.status,
+        pauseInfo: subscription.pauseInfo,
+      },
+    });
+  } catch (err) {
+    console.error('Admin pause subscription error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to pause subscription' });
+  }
+};
+
+// Admin: Set or renew subscription for any user
+exports.adminSetSubscription = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { plan, totalDays } = req.body;
+
+    // Derive days from plan if provided; otherwise use totalDays
+    let days = undefined;
+    if (plan) {
+      const planDetails = SUBSCRIPTION_PLANS[plan];
+      if (!planDetails) {
+        return res.status(400).json({ success: false, message: 'Invalid subscription plan' });
+      }
+      days = planDetails.days;
+    } else if (typeof totalDays !== 'undefined') {
+      const parsed = parseInt(totalDays);
+      if (isNaN(parsed) || parsed <= 0) {
+        return res.status(400).json({ success: false, message: 'Total days must be a positive number' });
+      }
+      days = parsed;
+    } else {
+      return res.status(400).json({ success: false, message: 'Provide a valid plan or totalDays' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'User not found' });
+    }
+
+    let subscription = await Subscription.findOne({ user: userId });
+
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + days);
+
+    if (subscription) {
+      // Update existing subscription (keep existing membershipId or let pre-save handle if null)
+      subscription.totalDays = days;
+      subscription.startDate = startDate;
+      subscription.endDate = endDate;
+      subscription.status = 'active';
+      subscription.hasSubscribedBefore = true;
+      subscription.pauseInfo = {
+        pauseStartDate: null,
+        pauseEndDate: null,
+        lastPauseDate: null,
+      };
+    } else {
+      // Create new subscription
+      subscription = new Subscription({
+        user: userId,
+        totalDays: days,
+        startDate,
+        endDate,
+        status: 'active',
+        hasSubscribedBefore: true,
+      });
+    }
+
+    await subscription.save();
+
+    const calculatedDaysLeft = calculateDaysLeft(subscription);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subscription set successfully by admin',
+      subscription: {
+        _id: subscription._id,
+        membershipId: subscription.membershipId,
+        totalDays: subscription.totalDays,
+        daysLeft: calculatedDaysLeft,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
+        status: subscription.status,
+        pauseInfo: subscription.pauseInfo,
+      },
+    });
+  } catch (err) {
+    console.error('Admin set subscription error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to set subscription' });
+  }
+};
+
+// Admin: Resume paused subscription for any user
+exports.adminResumeSubscription = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const subscription = await Subscription.findOne({ user: userId });
+
+    if (!subscription) {
+      return res.status(400).json({ success: false, message: 'Subscription not found' });
+    }
+
+    if (subscription.status !== 'pause') {
+      return res.status(400).json({ success: false, message: 'Subscription is not paused' });
+    }
+
+    // If resuming before pause end, remove unused pause days from endDate
+    if (subscription.pauseInfo?.pauseEndDate) {
+      const now = new Date();
+      const pauseEnd = new Date(subscription.pauseInfo.pauseEndDate);
+      if (now < pauseEnd) {
+        const unusedDays = Math.ceil((pauseEnd - now) / (1000 * 60 * 60 * 24));
+        const currentEndDate = new Date(subscription.endDate);
+        currentEndDate.setDate(currentEndDate.getDate() - unusedDays);
+        subscription.endDate = currentEndDate;
+      }
+    }
+
+    // If resuming before pause end, remove unused pause days from endDate
+    if (subscription.pauseInfo?.pauseEndDate) {
+      const now = new Date();
+      const pauseStart = subscription.pauseInfo.pauseStartDate
+        ? new Date(subscription.pauseInfo.pauseStartDate)
+        : null;
+      const pauseEnd = new Date(subscription.pauseInfo.pauseEndDate);
+
+      if (now < pauseEnd) {
+        const dayMs = 1000 * 60 * 60 * 24;
+        const effectiveStart = pauseStart && now < pauseStart ? pauseStart : now;
+        const unusedDays = Math.ceil((pauseEnd.getTime() - effectiveStart.getTime()) / dayMs);
+        const currentEndDate = new Date(subscription.endDate);
+        currentEndDate.setDate(currentEndDate.getDate() - unusedDays);
+        subscription.endDate = currentEndDate;
+      }
+    }
+
+    subscription.status = 'active';
+    subscription.pauseInfo = {
+      pauseStartDate: null,
+      pauseEndDate: null,
+      lastPauseDate: subscription.pauseInfo?.lastPauseDate || null,
+    };
+    await subscription.save();
+
+    const calculatedDaysLeft = calculateDaysLeft(subscription);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subscription resumed successfully by admin',
+      subscription: {
+        _id: subscription._id,
+        membershipId: subscription.membershipId,
+        totalDays: subscription.totalDays,
+        daysLeft: calculatedDaysLeft,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
+        status: subscription.status,
+        pauseInfo: subscription.pauseInfo,
+      },
+    });
+  } catch (err) {
+    console.error('Admin resume subscription error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to resume subscription' });
   }
 };

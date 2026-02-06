@@ -39,6 +39,7 @@ interface AuthContextType {
   resendOTP: (email: string) => Promise<void>;
   googleAuth: (googleId: string, email: string, fullname: string, profilePicture?: string) => Promise<boolean>;
   completeGoogleOnboarding: (googleId: string, email: string, fullname: string, username: string, phone: string, age?: number, weight?: number, profilePicture?: string) => Promise<void>;
+  updateUserContext: (userData: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
 }
@@ -77,24 +78,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setError(null);
       setIsAuthenticating(true);
       console.log('Attempting login to:', `${API_URL}/auth/login`);
-      
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password,
-      });
+
+      const response = await axios.post(
+        `${API_URL}/auth/login`,
+        { email, password },
+        {
+          timeout: 10000,
+          validateStatus: () => true,
+        }
+      );
+
+      if (response.status >= 400) {
+        const message = response.data?.message || 'Invalid email or password';
+        throw new Error(message);
+      }
 
       console.log('Login response:', response.data);
       const { token: newToken, user: newUser } = response.data;
-      
+
       await storage.setItem('token', newToken);
       await storage.setItem('user', JSON.stringify(newUser));
-      
+
       setToken(newToken);
       setUser(newUser);
       console.log('Login successful, user set:', newUser);
     } catch (err: any) {
-      console.error('Login error:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please try again.';
+      const errorMessage = err.message || 'Login failed. Please try again.';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -109,14 +118,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Sending OTP to:', `${API_URL}/auth/send-otp`);
       console.log('Request data:', JSON.stringify(data, null, 2));
       
-      const response = await axios.post(`${API_URL}/auth/send-otp`, data);
-      console.log('OTP sent:', response.data);
+      const response = await axios.post(`${API_URL}/auth/send-otp`, data, {
+        timeout: 15000,
+        validateStatus: (status) => status < 500, // Accept any status < 500, let frontend handle 4xx
+      });
+
+      console.log('OTP response status:', response.status);
+      console.log('OTP response data:', response.data);
+
+      if (response.status >= 400) {
+        const errorMessage = response.data?.message || 'Failed to send OTP';
+        throw new Error(errorMessage);
+      }
+
+      if (!response.data.email) {
+        throw new Error('Invalid response from server - email not provided');
+      }
+
+      console.log('OTP sent successfully to:', response.data.email);
       return response.data.email;
     } catch (err: any) {
       console.error('Send OTP error:', err);
       console.error('Error response data:', err.response?.data);
       console.error('Error status:', err.response?.status);
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to send OTP.';
+      console.error('Error message:', err.message);
+      
+      let errorMessage = 'Failed to send OTP.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. Please check your internet connection.';
+      } else if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to server. Please check your network.';
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -130,10 +168,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAuthenticating(true);
       console.log('Verifying OTP for:', email);
       
-      const response = await axios.post(`${API_URL}/auth/verify-otp`, { email, otp });
-      console.log('OTP verified:', response.data);
+      const response = await axios.post(`${API_URL}/auth/verify-otp`, { email, otp }, {
+        timeout: 15000,
+        validateStatus: (status) => status < 500,
+      });
+
+      console.log('Verify OTP response status:', response.status);
+      console.log('Verify OTP response data:', response.data);
+
+      if (response.status >= 400) {
+        const errorMessage = response.data?.message || 'Failed to verify OTP';
+        throw new Error(errorMessage);
+      }
       
       const { token: newToken, user: newUser } = response.data;
+
+      if (!newToken || !newUser) {
+        throw new Error('Invalid response from server - token or user not provided');
+      }
       
       await storage.setItem('token', newToken);
       await storage.setItem('user', JSON.stringify(newUser));
@@ -143,7 +195,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Account created successfully:', newUser);
     } catch (err: any) {
       console.error('Verify OTP error:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Invalid OTP.';
+      console.error('Error response:', err.response?.data);
+      
+      let errorMessage = 'Invalid OTP.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. Please try again.';
+      } else if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to server. Please check your network.';
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -156,11 +221,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setError(null);
       console.log('Resending OTP to:', email);
       
-      await axios.post(`${API_URL}/auth/resend-otp`, { email });
+      const response = await axios.post(`${API_URL}/auth/resend-otp`, { email }, {
+        timeout: 15000,
+        validateStatus: (status) => status < 500,
+      });
+
+      console.log('Resend OTP response status:', response.status);
       console.log('OTP resent successfully');
+
+      if (response.status >= 400) {
+        const errorMessage = response.data?.message || 'Failed to resend OTP';
+        throw new Error(errorMessage);
+      }
     } catch (err: any) {
       console.error('Resend OTP error:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to resend OTP.';
+      console.error('Error response:', err.response?.data);
+      
+      let errorMessage = 'Failed to resend OTP.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. Please try again.';
+      } else if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to server. Please check your network.';
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -246,8 +334,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const updateUserContext = async (userData: Partial<User>) => {
+    try {
+      if (user) {
+        const updatedUser = { ...user, ...userData };
+        setUser(updatedUser);
+        await storage.setItem('user', JSON.stringify(updatedUser));
+      }
+    } catch (err) {
+      console.error('Error updating user context:', err);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, isAuthenticating, login, sendOTP, verifyOTP, resendOTP, googleAuth, completeGoogleOnboarding, logout, error }}>
+    <AuthContext.Provider value={{ user, token, loading, isAuthenticating, login, sendOTP, verifyOTP, resendOTP, googleAuth, completeGoogleOnboarding, updateUserContext, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
