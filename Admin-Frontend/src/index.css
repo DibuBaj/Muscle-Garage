@@ -92,10 +92,6 @@ button:hover {
   box-shadow: var(--shadow);
 }
 
-button:focus,
-button:focus-visible {
-  outline: 4px auto var(--primary-color);
-}
 
 input, textarea, select {
   font-family: 'Poppins', sans-serif;

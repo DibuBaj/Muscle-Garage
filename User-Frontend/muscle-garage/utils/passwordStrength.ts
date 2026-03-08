@@ -64,7 +64,7 @@ export const getPasswordStrengthColor = (strength: PasswordStrength): string => 
     case 'weak':
       return '#C41717';
     case 'medium':
-      return '#E57A25';
+      return '#FFA500';
     case 'strong':
       return '#28A745';
     case 'very-strong':

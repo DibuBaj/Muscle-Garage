@@ -3,6 +3,7 @@ import './UserManagement.css';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteModal, setDeleteModal] = useState({ show: false, userId: null, userName: '' });
@@ -30,7 +31,40 @@ const UserManagement = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchPlans();
   }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/subscription/plans/active');
+      const data = await response.json();
+
+      if (data.success) {
+        const orderedPlans = [...data.plans].sort((a, b) => {
+          const orderA = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+          const orderB = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+          return orderA - orderB;
+        });
+        setPlans(orderedPlans);
+      } else {
+        console.error('Failed to fetch subscription plans:', data.message);
+        // Use fallback static plans if API fails
+        setPlans([
+          { _id: '1_month', name: '1 Month', price: 1500, days: 30 },
+          { _id: '3_months', name: '3 Months', price: 4000, days: 90 },
+          { _id: '12_months', name: '12 Months', price: 17000, days: 365 },
+        ]);
+      }
+    } catch (err) {
+      console.error('Fetch plans error:', err);
+      // Use fallback static plans if API fails
+      setPlans([
+        { _id: '1_month', name: '1 Month', price: 1500, days: 30 },
+        { _id: '3_months', name: '3 Months', price: 4000, days: 90 },
+        { _id: '12_months', name: '12 Months', price: 17000, days: 365 },
+      ]);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -146,6 +180,7 @@ const UserManagement = () => {
     setEditModal({ show: false, user: null });
     setPauseData({ startDate: '', endDate: '' });
     setSubscriptionData({ membershipId: '', totalDays: '' });
+    setSelectedPlan(null);
   };
 
   // Ensure clicking a date input opens the browser date picker
@@ -371,7 +406,7 @@ const UserManagement = () => {
   };
 
   // Filter users based on search query and status filters
-  const filteredUsers = users.filter(user => {
+  let filteredUsers = users.filter(user => {
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -502,9 +537,10 @@ const UserManagement = () => {
         </div>
       )}
 
-      <div className="search-container">
+      <div className="user-search-container">
         <div className="search-filter-section">
           <div className="search-filter-wrapper">
+           
             <div className="search-box">
               <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -526,62 +562,55 @@ const UserManagement = () => {
                 </button>
               )}
             </div>
-            
-            <div className="filter-container" ref={filterRef}>
-              <button 
-                className={`filter-button ${activeFilterCount > 0 ? 'has-filters' : ''} ${showFilterDropdown ? 'dropdown-open' : ''}`}
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                title="Filter users"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                {activeFilterCount > 0 && (
-                  <span className="filter-count">{activeFilterCount}</span>
-                )}
-              </button>
-              
-              {showFilterDropdown && (
-                <div className="filter-dropdown">
-                  <div className="filter-header">Filter by Status</div>
-                  <label className="filter-option">
-                    <input
-                      type="checkbox"
-                      checked={filters.active}
-                      onChange={() => handleFilterChange('active')}
-                    />
-                    <span>Active</span>
-                  </label>
-                  <label className="filter-option">
-                    <input
-                      type="checkbox"
-                      checked={filters.notSubscribed}
-                      onChange={() => handleFilterChange('notSubscribed')}
-                    />
-                    <span>Not Subscribed</span>
-                  </label>
-                  <label className="filter-option">
-                    <input
-                      type="checkbox"
-                      checked={filters.expired}
-                      onChange={() => handleFilterChange('expired')}
-                    />
-                    <span>Expired</span>
-                  </label>
-                  <label className="filter-option">
-                    <input
-                      type="checkbox"
-                      checked={filters.paused}
-                      onChange={() => handleFilterChange('paused')}
-                    />
-                    <span>Paused</span>
-                  </label>
-                </div>
-              )}
-            </div>
+            <button
+              className={`filter-button ${activeFilterCount > 0 ? 'has-filters' : ''} ${showFilterDropdown ? 'dropdown-open' : ''}`}
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              title="Filter users"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+            </button>
+            {showFilterDropdown && (
+              <div className="filter-dropdown">
+                <div className="filter-header">Filter by Status</div>
+                <label className="filter-option">
+                  <input
+                    type="checkbox"
+                    checked={filters.active}
+                    onChange={() => handleFilterChange('active')}
+                  />
+                  <span>Active</span>
+                </label>
+                <label className="filter-option">
+                  <input
+                    type="checkbox"
+                    checked={filters.notSubscribed}
+                    onChange={() => handleFilterChange('notSubscribed')}
+                  />
+                  <span>Not Subscribed</span>
+                </label>
+                <label className="filter-option">
+                  <input
+                    type="checkbox"
+                    checked={filters.expired}
+                    onChange={() => handleFilterChange('expired')}
+                  />
+                  <span>Expired</span>
+                </label>
+                <label className="filter-option">
+                  <input
+                    type="checkbox"
+                    checked={filters.paused}
+                    onChange={() => handleFilterChange('paused')}
+                  />
+                  <span>Paused</span>
+                </label>
+              </div>
+            )}
           </div>
-          
-          <button 
+          <button
             className="create-user-button"
             onClick={handleCreateClick}
             title="Create New User"
@@ -594,8 +623,8 @@ const UserManagement = () => {
           </button>
         </div>
         <div className="search-results-count">
-          {(searchQuery || activeFilterCount > 0) 
-            ? `Found ${filteredUsers.length} of ${users.length} users` 
+          {(searchQuery || activeFilterCount > 0)
+            ? `Found ${filteredUsers.length} of ${users.length} users`
             : `Total ${users.length} users`}
         </div>
       </div>
@@ -810,27 +839,24 @@ const UserManagement = () => {
                   {/* Plan Selector (like user panel) */}
                   <div className="plan-selector">
                     <div className="plan-cards">
-                      {[
-                        { id: '1_month', label: '1 Month', price: 1500, days: 30 },
-                        { id: '3_months', label: '3 Months', price: 4000, days: 90 },
-                        { id: '12_months', label: '12 Months', price: 17000, days: 365 },
-                      ].map((plan) => (
+                      {plans.map((plan) => (
                         <button
-                          key={plan.id}
+                          key={plan._id}
                           type="button"
-                          className={`plan-card ${selectedPlan === plan.id ? 'selected' : ''}`}
+                          className={`plan-card ${selectedPlan === plan._id ? 'selected' : ''}`}
                           onClick={() => {
-                            setSelectedPlan(plan.id);
-                            setSubscriptionData({ membershipId: plan.id, totalDays: String(plan.days) });
+                            setSelectedPlan(plan._id);
+                            setSubscriptionData({ membershipId: plan._id, totalDays: String(plan.days) });
                           }}
                         >
-                          <div className="plan-label">{plan.label}</div>
+                          <div className="plan-label">{plan.name}</div>
                           <div className="plan-price">Rs. {plan.price}</div>
                           <div className="plan-days">({plan.days} days)</div>
                         </button>
                       ))}
                     </div>
                   </div>
+
                   
                   <button 
                     className="btn-action btn-set"

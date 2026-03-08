@@ -187,7 +187,7 @@ export default function DashboardScreen() {
               <View style={styles.pausedSubscriptionCard}>
                 <View style={styles.pausedHeader}>
                   <View style={styles.pausedHeaderContent}>
-                    <Ionicons name="pause-circle" size={24} color="#FFC107" />
+                    <Ionicons name="pause-circle" size={24} color="#FFA500" />
                     <Text style={styles.pausedStatus}>Subscription Paused</Text>
                   </View>
                 </View>
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#FFC107',
+    borderColor: '#FFA500',
   },
   pausedHeader: {
     marginBottom: 16,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   pausedStatus: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFC107',
+    color: '#FFA500',
   },
   pausedInfo: {
     marginBottom: 16,

@@ -6,7 +6,11 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const subscriptionRoutes = require('./routes/subscription');
 const userRoutes = require('./routes/user');
+const trainerRoutes = require('./routes/trainer');
+const sessionRoutes = require('./routes/session');
 const { decreaseDaysDaily } = require('./controllers/subscriptionController');
+const SubscriptionPlan = require('./models/SubscriptionPlan');
+const cloudinary = require('./config/cloudinary');
 
 dotenv.config();
 
@@ -18,13 +22,63 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Test endpoint to verify Cloudinary config
+app.get('/test-cloudinary', (req, res) => {
+  res.json({
+    cloudinary_config: {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET',
+      api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET'
+    },
+    message: 'Cloudinary credentials are configured'
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/trainer', trainerRoutes);
+app.use('/api/session', sessionRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Muscle Garage API is running' });
 });
+
+// Initialize default subscription plans
+const initializeDefaultPlans = async () => {
+  try {
+    const requiredPlans = [
+      {
+        name: '1 Month',
+        days: 30,
+        price: 1500,
+        isActive: true,
+      },
+      {
+        name: '3 Months',
+        days: 90,
+        price: 4000,
+        isActive: true,
+      },
+      {
+        name: '12 Months',
+        days: 365,
+        price: 17000,
+        isActive: true,
+      },
+    ];
+
+    for (const plan of requiredPlans) {
+      const existingPlan = await SubscriptionPlan.findOne({ name: plan.name });
+      if (!existingPlan) {
+        await SubscriptionPlan.create(plan);
+        console.log(`✓ Created subscription plan: ${plan.name}`);
+      }
+    }
+  } catch (err) {
+    console.error('Error initializing default subscription plans:', err);
+  }
+};
 
 // Cron job: Decrease daysLeft daily at midnight
 cron.schedule('0 0 * * *', () => {
@@ -34,6 +88,8 @@ cron.schedule('0 0 * * *', () => {
 
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
-app.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, async () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
+  // Initialize default subscription plans when server starts
+  await initializeDefaultPlans();
 });

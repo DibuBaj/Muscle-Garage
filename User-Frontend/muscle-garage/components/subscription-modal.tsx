@@ -13,8 +13,10 @@ import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SubscriptionPlan {
-  id: string;
-  label: string;
+  _id?: string;
+  id?: string;
+  name: string;
+  label?: string;
   price: number;
   days: number;
 }
@@ -26,37 +28,35 @@ interface SubscriptionModalProps {
   onSubscriptionSuccess: () => void;
 }
 
-const PLANS: SubscriptionPlan[] = [
-  {
-    id: '1_month',
-    label: '1 Month',
-    price: 1500,
-    days: 30,
-  },
-  {
-    id: '3_months',
-    label: '3 Months',
-    price: 4000,
-    days: 90,
-  },
-  {
-    id: '12_months',
-    label: '12 Months',
-    price: 17000,
-    days: 365,
-  },
-];
-
 export default function SubscriptionModal({
   visible,
   onClose,
   token,
   onSubscriptionSuccess,
 }: SubscriptionModalProps) {
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  React.useEffect(() => {
+    if (visible) {
+      fetchPlans();
+    }
+  }, [visible]);
+
+  const fetchPlans = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/subscription/plans/active`);
+      if (response.data.success && response.data.plans) {
+        setPlans(response.data.plans);
+      }
+    } catch (err) {
+      console.error('Error fetching plans:', err);
+      setPlans([]);
+    }
+  };
 
   const handleSubscribe = async () => {
     if (!selectedPlan) {
@@ -138,26 +138,30 @@ export default function SubscriptionModal({
           </View>
 
           <View style={styles.plansContainer}>
-            {PLANS.map((plan) => (
-              <TouchableOpacity
-                key={plan.id}
-                style={[
-                  styles.planBox,
-                  selectedPlan === plan.id && styles.planBoxSelected,
-                ]}
-                onPress={() => !loading && setSelectedPlan(plan.id)}
-                disabled={loading}
-              >
-                <Text style={styles.planLabel}>{plan.label}</Text>
-                <Text style={styles.planPrice}>Rs. {plan.price}</Text>
-                <Text style={styles.planDays}>({plan.days} days)</Text>
-                {selectedPlan === plan.id && (
-                  <View style={styles.checkmark}>
-                    <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+            {plans.map((plan) => {
+              const planId = plan._id || plan.id;
+              const planName = plan.name || plan.label;
+              return (
+                <TouchableOpacity
+                  key={planId}
+                  style={[
+                    styles.planBox,
+                    selectedPlan === planId && styles.planBoxSelected,
+                  ]}
+                  onPress={() => !loading && setSelectedPlan(planId!)}
+                  disabled={loading}
+                >
+                  <Text style={styles.planLabel}>{planName}</Text>
+                  <Text style={styles.planPrice}>Rs. {plan.price}</Text>
+                  <Text style={styles.planDays}>({plan.days} days)</Text>
+                  {selectedPlan === planId && (
+                    <View style={styles.checkmark}>
+                      <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <TouchableOpacity

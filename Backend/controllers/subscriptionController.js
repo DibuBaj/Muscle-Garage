@@ -1,6 +1,8 @@
 const Subscription = require('../models/Subscription');
+const SubscriptionPlan = require('../models/SubscriptionPlan');
 const User = require('../models/User');
 
+// Legacy plans object for backward compatibility
 const SUBSCRIPTION_PLANS = {
   '1_month': {
     days: 30,
@@ -117,12 +119,25 @@ exports.subscribe = async (req, res) => {
     const userId = req.user;
     const { plan } = req.body;
 
-    // Validate plan
-    if (!SUBSCRIPTION_PLANS[plan]) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid subscription plan',
-      });
+    // Validate plan - check if it's a MongoDB ID or legacy key
+    let planDetails;
+    
+    if (SUBSCRIPTION_PLANS[plan]) {
+      // Legacy plan key (backward compatibility)
+      planDetails = SUBSCRIPTION_PLANS[plan];
+    } else {
+      // Try to find plan in database
+      const planDoc = await SubscriptionPlan.findById(plan);
+      if (!planDoc || !planDoc.isActive) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid subscription plan',
+        });
+      }
+      planDetails = {
+        days: planDoc.days,
+        price: planDoc.price,
+      };
     }
 
     const user = await User.findById(userId);
@@ -139,8 +154,7 @@ exports.subscribe = async (req, res) => {
       subscription = new Subscription({ user: userId });
     }
 
-    // Get plan details
-    const planDetails = SUBSCRIPTION_PLANS[plan];
+    // Get plan details (already retrieved above)
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + planDetails.days);
@@ -409,16 +423,21 @@ exports.adminPauseSubscription = async (req, res) => {
 exports.adminSetSubscription = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { plan, totalDays } = req.body;
+    const { plan, totalDays, isActive } = req.body;
 
     // Derive days from plan if provided; otherwise use totalDays
     let days = undefined;
     if (plan) {
-      const planDetails = SUBSCRIPTION_PLANS[plan];
-      if (!planDetails) {
-        return res.status(400).json({ success: false, message: 'Invalid subscription plan' });
+      let planDetails = await SubscriptionPlan.findById(plan);
+      if (planDetails) {
+        days = planDetails.days;
+      } else {
+        planDetails = SUBSCRIPTION_PLANS[plan];
+        if (!planDetails) {
+          return res.status(400).json({ success: false, message: 'Invalid subscription plan' });
+        }
+        days = planDetails.days;
       }
-      days = planDetails.days;
     } else if (typeof totalDays !== 'undefined') {
       const parsed = parseInt(totalDays);
       if (isNaN(parsed) || parsed <= 0) {
@@ -440,12 +459,15 @@ exports.adminSetSubscription = async (req, res) => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
 
+    // Determine subscription status (default to 'active' if not specified)
+    const subscriptionStatus = isActive === false ? 'pause' : 'active';
+
     if (subscription) {
       // Update existing subscription (keep existing membershipId or let pre-save handle if null)
       subscription.totalDays = days;
       subscription.startDate = startDate;
       subscription.endDate = endDate;
-      subscription.status = 'active';
+      subscription.status = subscriptionStatus;
       subscription.hasSubscribedBefore = true;
       subscription.pauseInfo = {
         pauseStartDate: null,
@@ -459,7 +481,7 @@ exports.adminSetSubscription = async (req, res) => {
         totalDays: days,
         startDate,
         endDate,
-        status: 'active',
+        status: subscriptionStatus,
         hasSubscribedBefore: true,
       });
     }
@@ -559,5 +581,239 @@ exports.adminResumeSubscription = async (req, res) => {
   } catch (err) {
     console.error('Admin resume subscription error:', err);
     res.status(500).json({ success: false, message: err.message || 'Failed to resume subscription' });
+  }
+};
+
+// =====================================================
+// SUBSCRIPTION PLAN MANAGEMENT (ADMIN ONLY)
+// =====================================================
+
+// Get all subscription plans
+exports.getAllPlans = async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.find({ isActive: true }).sort({ order: 1, createdAt: 1 });
+    
+    res.status(200).json({
+      success: true,
+      plans,
+      total: plans.length,
+    });
+  } catch (err) {
+    console.error('Get all plans error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch subscription plans' });
+  }
+};
+
+// Get all subscription plans (including inactive)
+exports.getAllPlansAdmin = async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.find().sort({ order: 1, createdAt: 1 });
+    
+    res.status(200).json({
+      success: true,
+      plans,
+      total: plans.length,
+    });
+  } catch (err) {
+    console.error('Get all plans (admin) error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch subscription plans' });
+  }
+};
+
+// Get single plan by ID
+exports.getPlanById = async (req, res) => {
+  try {
+    const { planId } = req.params;
+    const plan = await SubscriptionPlan.findById(planId);
+    
+    if (!plan) {
+      return res.status(404).json({ success: false, message: 'Subscription plan not found' });
+    }
+    
+    res.status(200).json({ success: true, plan });
+  } catch (err) {
+    console.error('Get plan by ID error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch subscription plan' });
+  }
+};
+
+// Create new subscription plan
+exports.createPlan = async (req, res) => {
+  try {
+    const { name, days, price } = req.body;
+    
+    // Validation
+    if (!name || !days || !price) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, days, and price are required',
+      });
+    }
+    
+    if (days <= 0 || price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Days and price must be positive numbers',
+      });
+    }
+    
+    // Check if plan with same name already exists
+    const existingPlan = await SubscriptionPlan.findOne({ name: { $regex: `^${name}$`, $options: 'i' } });
+    if (existingPlan) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subscription plan with this name already exists',
+      });
+    }
+    
+    const lastPlan = await SubscriptionPlan.findOne().sort({ order: -1, createdAt: -1 });
+    const lastOrder = lastPlan && Number.isFinite(lastPlan.order) ? lastPlan.order : 0;
+    const nextOrder = lastOrder + 1;
+
+    // Create new plan
+    const newPlan = new SubscriptionPlan({
+      name: name.trim(),
+      days: Number(days),
+      price: Number(price),
+      isActive: true,
+      order: nextOrder,
+    });
+    
+    await newPlan.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'Subscription plan created successfully',
+      plan: newPlan,
+    });
+  } catch (err) {
+    console.error('Create plan error:', err);
+    
+    // Handle duplicate key error
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subscription plan with this name already exists',
+      });
+    }
+    
+    res.status(500).json({ success: false, message: 'Failed to create subscription plan' });
+  }
+};
+
+// Update subscription plan
+exports.updatePlan = async (req, res) => {
+  try {
+    const { planId } = req.params;
+    const { name, days, price, isActive } = req.body;
+    
+    // Find plan
+    const plan = await SubscriptionPlan.findById(planId);
+    if (!plan) {
+      return res.status(404).json({ success: false, message: 'Subscription plan not found' });
+    }
+    
+    // Validation
+    if (name && name.trim() === '') {
+      return res.status(400).json({ success: false, message: 'Plan name cannot be empty' });
+    }
+    
+    if (days !== undefined && days <= 0) {
+      return res.status(400).json({ success: false, message: 'Days must be a positive number' });
+    }
+    
+    if (price !== undefined && price <= 0) {
+      return res.status(400).json({ success: false, message: 'Price must be a positive number' });
+    }
+    
+    // Check for duplicate name (if name is being updated)
+    if (name && name !== plan.name) {
+      const existingPlan = await SubscriptionPlan.findOne({
+        _id: { $ne: planId },
+        name: { $regex: `^${name}$`, $options: 'i' },
+      });
+      if (existingPlan) {
+        return res.status(400).json({
+          success: false,
+          message: 'Subscription plan with this name already exists',
+        });
+      }
+    }
+    
+    // Update fields
+    if (name) plan.name = name.trim();
+    if (days !== undefined) plan.days = Number(days);
+    if (price !== undefined) plan.price = Number(price);
+    if (isActive !== undefined) plan.isActive = Boolean(isActive);
+    
+    await plan.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Subscription plan updated successfully',
+      plan,
+    });
+  } catch (err) {
+    console.error('Update plan error:', err);
+    
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subscription plan with this name already exists',
+      });
+    }
+    
+    res.status(500).json({ success: false, message: 'Failed to update subscription plan' });
+  }
+};
+
+// Delete subscription plan
+exports.deletePlan = async (req, res) => {
+  try {
+    const { planId } = req.params;
+    
+    // Find plan
+    const plan = await SubscriptionPlan.findById(planId);
+    if (!plan) {
+      return res.status(404).json({ success: false, message: 'Subscription plan not found' });
+    }
+    
+    // Check if any user is using this plan (optional check)
+    // For now, we'll allow deletion, but this could be enhanced
+    
+    await SubscriptionPlan.findByIdAndDelete(planId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Subscription plan deleted successfully',
+    });
+  } catch (err) {
+    console.error('Delete plan error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete subscription plan' });
+  }
+};
+
+// Update subscription plan order
+exports.updatePlanOrder = async (req, res) => {
+  try {
+    const { planIds } = req.body;
+
+    if (!Array.isArray(planIds) || planIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'planIds must be a non-empty array' });
+    }
+
+    const bulkOps = planIds.map((planId, index) => ({
+      updateOne: {
+        filter: { _id: planId },
+        update: { $set: { order: index + 1 } },
+      },
+    }));
+
+    await SubscriptionPlan.bulkWrite(bulkOps);
+
+    res.status(200).json({ success: true, message: 'Plan order updated successfully' });
+  } catch (err) {
+    console.error('Update plan order error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update plan order' });
   }
 };

@@ -9,9 +9,20 @@ const {
   adminPauseSubscription,
   adminSetSubscription,
   adminResumeSubscription,
+  getAllPlans,
+  getAllPlansAdmin,
+  getPlanById,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  updatePlanOrder,
 } = require('../controllers/subscriptionController');
 
 const router = express.Router();
+
+// =====================================================
+// USER SUBSCRIPTION ROUTES
+// =====================================================
 
 // Get user's subscription
 router.get('/me', authMiddleware, getUserSubscription);
@@ -25,7 +36,37 @@ router.post('/pause', authMiddleware, pauseSubscription);
 // Resume subscription
 router.post('/resume', authMiddleware, resumeSubscription);
 
-// Admin routes
+// =====================================================
+// SUBSCRIPTION PLAN ROUTES (PUBLIC & ADMIN)
+// =====================================================
+
+// Get all active subscription plans (public)
+router.get('/plans/active', getAllPlans);
+
+// Get all subscription plans (admin only)
+router.get('/admin/plans', adminMiddleware, getAllPlansAdmin);
+
+// Create new subscription plan (admin only)
+router.post('/admin/plans', adminMiddleware, createPlan);
+
+// Update subscription plan order (admin only)
+router.put('/admin/plans/order', adminMiddleware, updatePlanOrder);
+
+// Update subscription plan (admin only)
+router.put('/admin/plans/:planId', adminMiddleware, updatePlan);
+
+// Get single plan by ID
+router.get('/admin/plans/:planId', adminMiddleware, getPlanById);
+
+
+// Delete subscription plan (admin only)
+router.delete('/admin/plans/:planId', adminMiddleware, deletePlan);
+
+// =====================================================
+// ADMIN SUBSCRIPTION MANAGEMENT ROUTES
+// =====================================================
+
+// Admin get user subscription with calculated daysLeft
 router.get('/admin/get/:userId', adminMiddleware, async (req, res) => {
   try {
     const userId = req.params.userId;

@@ -18,8 +18,10 @@ import PauseSubscriptionModal from '@/components/pause-subscription-modal';
 import ToastNotification from '@/components/toast-notification';
 
 interface SubscriptionPlan {
-  id: string;
-  label: string;
+  _id?: string;
+  id?: string;
+  name: string;
+  label?: string;
   price: number;
   days: number;
 }
@@ -42,30 +44,10 @@ interface Subscription {
   updatedAt: string;
 }
 
-const PLANS: SubscriptionPlan[] = [
-  {
-    id: '1_month',
-    label: '1 Month',
-    price: 1500,
-    days: 30,
-  },
-  {
-    id: '3_months',
-    label: '3 Months',
-    price: 4000,
-    days: 90,
-  },
-  {
-    id: '12_months',
-    label: '12 Months',
-    price: 17000,
-    days: 365,
-  },
-];
-
 export default function MembershipScreen() {
   const { token } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
@@ -73,8 +55,29 @@ export default function MembershipScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [pauseModalVisible, setPauseModalVisible] = useState(false);
 
+  const fetchPlans = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/subscription/plans/active`);
+      if (response.data.success && response.data.plans) {
+        const orderedPlans = [...response.data.plans].sort((a, b) => {
+          const orderA = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+          const orderB = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+          return orderA - orderB;
+        });
+        setPlans(orderedPlans);
+      }
+    } catch (err) {
+      console.error('Error fetching plans:', err);
+      setPlans([]);
+    }
+  };
+
   useEffect(() => {
-    fetchSubscription();
+    const initializeData = async () => {
+      await fetchPlans();
+      await fetchSubscription();
+    };
+    initializeData();
   }, []);
 
   useFocusEffect(
@@ -112,9 +115,10 @@ export default function MembershipScreen() {
 
     setSubscribing(true);
     try {
+      const planId = selectedPlan;
       const response = await axios.post(
         `${API_URL}/subscription/subscribe`,
-        { plan: selectedPlan },
+        { plan: planId },
         {
           headers: {
             Authorization: token,
@@ -223,7 +227,7 @@ export default function MembershipScreen() {
                   <Ionicons 
                     name={subscription?.status === 'pause' ? "pause-circle" : "checkmark-circle"} 
                     size={24} 
-                    color={subscription?.status === 'pause' ? '#FFC107' : Colors.success} 
+                    color={subscription?.status === 'pause' ? '#FFA500' : Colors.success} 
                   />
                   <View style={styles.cardTitleContainer}>
                     <Text style={[styles.cardTitle, subscription?.status === 'pause' && styles.cardTitlePaused]}>
@@ -278,26 +282,30 @@ export default function MembershipScreen() {
                 <View style={styles.plansSection}>
                   <Text style={styles.sectionTitle}>Choose Your Plan</Text>
                   <View style={styles.plansContainer}>
-                    {PLANS.map((plan) => (
-                      <TouchableOpacity
-                        key={plan.id}
-                        style={[
-                          styles.planBox,
-                          selectedPlan === plan.id && styles.planBoxSelected,
-                        ]}
-                        onPress={() => !subscribing && setSelectedPlan(plan.id)}
-                        disabled={subscribing}
-                      >
-                        <Text style={styles.planLabel}>{plan.label}</Text>
-                        <Text style={styles.planPrice}>Rs. {plan.price}</Text>
-                        <Text style={styles.planDays}>({plan.days} days)</Text>
-                        {selectedPlan === plan.id && (
-                          <View style={styles.checkmark}>
-                            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    ))}
+                    {plans.map((plan) => {
+                      const planId = plan._id || plan.id;
+                      const planName = plan.name || plan.label;
+                      return (
+                        <TouchableOpacity
+                          key={planId}
+                          style={[
+                            styles.planBox,
+                            selectedPlan === planId && styles.planBoxSelected,
+                          ]}
+                          onPress={() => !subscribing && setSelectedPlan(planId!)}
+                          disabled={subscribing}
+                        >
+                          <Text style={styles.planLabel}>{planName}</Text>
+                          <Text style={styles.planPrice}>Rs. {plan.price}</Text>
+                          <Text style={styles.planDays}>({plan.days} days)</Text>
+                          {selectedPlan === planId && (
+                            <View style={styles.checkmark}>
+                              <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
 
@@ -443,7 +451,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitlePaused: {
-    color: '#FFC107',
+    color: '#FFA500',
   },
   statusBadge: {
     fontSize: 11,
@@ -455,7 +463,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   currentSubscriptionCardPaused: {
-    borderColor: '#FFC107',
+    borderColor: '#FFA500',
   },
   subscriptionInfo: {
     marginBottom: 16,
@@ -604,7 +612,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   resumeButton: {
-    backgroundColor: '#FFC107',
+    backgroundColor: '#FFA500',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -621,7 +629,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 24,
     borderWidth: 1,
-    borderColor: '#FFC107',
+    borderColor: '#FFA500',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,

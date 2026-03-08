@@ -32,11 +32,10 @@
 }
 
 /* Search Section */
-.search-container {
+.user-search-container {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 24px;
 }
 
 .search-filter-section {
@@ -147,22 +146,6 @@
   background-color: rgba(255, 165, 0, 0.1);
 }
 
-.filter-count {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background-color: var(--primary-color);
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid white;
-}
 
 .filter-dropdown {
   position: absolute;
@@ -315,26 +298,31 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  border: 2px solid;
 }
 
 .status-active {
   background-color: #d4edda;
-  color: #155724;
+  color: #28a745;
+  border:1px solid  #28a745;
 }
 
 .status-inactive {
   background-color: #f8d7da;
   color: #721c24;
+  border:1px solid  #721c24;
 }
 
 .status-expired {
   background-color: #fff3cd;
   color: #856404;
+  border:1px solid  #856404;
 }
 
 .status-paused {
   background-color: #cce5ff;
   color: #004085;
+  border:1px solid  #004085;
 }
 
 /* Action Buttons */
@@ -434,8 +422,8 @@
   background-color: white;
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-  max-width: 500px;
-  width: 90%;
+  max-width: 700px;
+  width: 95%;
   animation: slideUp 0.3s ease;
 }
 
@@ -540,7 +528,7 @@
 
 /* Edit Modal Styles */
 .edit-modal {
-  max-width: 650px;
+  max-width: 800px;
   max-height: 85vh;
   overflow-y: auto;
 }
@@ -568,7 +556,6 @@
   border: 2px solid var(--border-color);
   border-radius: 8px;
   padding: 20px;
-  margin-bottom: 24px;
   background-color: white;
 }
 
@@ -648,14 +635,14 @@
 }
 
 .btn-pause {
-  background-color: #ffc107;
-  color: white;
+  background-color: #FFA500 !important;
+  color: white !important;
 }
 
 .btn-pause:hover:not(:disabled) {
-  background-color: #e0a800;
+  background-color: #FFA500;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+  box-shadow: 0 4px 12px rgba(229, 122, 37, 0.3);
   cursor: pointer;
 }
 
@@ -672,14 +659,14 @@
 }
 
 .btn-set {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: #FFA500 !important;
+  color: white !important;
 }
 
 .btn-set:hover:not(:disabled) {
-  background-color: #e69500;
+  background-color: #C5691B;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(229, 122, 37, 0.3);
   cursor: pointer;
 }
 
@@ -749,6 +736,61 @@
 }
 
 .plan-days {
+  font-size: 12px;
+  color: #666;
+}
+
+
+/* Subscription Status Toggle */
+.subscription-status-toggle {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.subscription-status-toggle label {
+  display: block;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-color);
+}
+
+.status-options {
+  display: flex;
+  gap: 12px;
+}
+
+.status-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  background-color: white;
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-btn:hover {
+  border-color: var(--primary-color);
+}
+
+.status-btn.active {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.status-btn.inactive {
+  background-color: #dc3545;
+  border: 1px solid #dc3545;
+  color: white;
+}
+.plan-days {
   font-size: 13px;
   color: #666;
 }
@@ -816,7 +858,7 @@
   justify-content: center;
   gap: 8px;
   padding: 14px 20px;
-  background-color: #FF8C00;
+  background-color: #FFA500;
   color: white;
   border: none;
   border-radius: 8px;
@@ -829,9 +871,9 @@
 }
 
 .create-user-button:hover {
-  background-color: #E67E00;
+  background-color: #C5691B;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 140, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(229, 122, 37, 0.3);
 }
 
 .create-user-button:active {
@@ -895,7 +937,7 @@
 
 .btn-create {
   padding: 12px 24px;
-  background-color: #FF8C00;
+  background-color: #FFA500;
   color: white;
   border: none;
   border-radius: 8px;
@@ -907,9 +949,9 @@
 }
 
 .btn-create:hover:not(:disabled) {
-  background-color: #E67E00;
+  background-color: #C5691B;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 140, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(229, 122, 37, 0.3);
 }
 
 .btn-create:disabled {

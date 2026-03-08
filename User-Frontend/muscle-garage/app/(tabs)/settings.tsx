@@ -263,7 +263,6 @@ export default function SettingsScreen() {
         {
           headers: {
             Authorization: token,
-            'Content-Type': 'multipart/form-data',
           },
         }
       );
