@@ -1,4 +1,5 @@
 const Trainer = require('../models/Trainer');
+const Booking = require('../models/Booking');
 const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 
@@ -265,6 +266,9 @@ exports.deleteTrainer = async (req, res) => {
         console.error('Cloudinary delete error:', deleteErr);
       }
     }
+
+    // Delete all bookings associated with this trainer
+    await Booking.deleteMany({ trainerId: id });
 
     await Trainer.findByIdAndDelete(id);
 

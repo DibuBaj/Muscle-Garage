@@ -62,7 +62,8 @@ const TrainerManagement = () => {
     duration: '',
     rate: '',
     maxCapacity: '',
-    dayOfWeek: ''
+    dayOfWeek: '',
+    phone: ''
   });
 
   const [formError, setFormError] = useState('');
@@ -152,7 +153,8 @@ const TrainerManagement = () => {
       duration: '',
       rate: '',
       maxCapacity: '',
-      dayOfWeek: ''
+      dayOfWeek: '',
+      phone: ''
     });
     setFormError('');
   };
@@ -297,7 +299,8 @@ const TrainerManagement = () => {
             duration: parseInt(sessionForm.duration),
             rate: parseInt(sessionForm.rate, 10),
             maxCapacity: sessionForm.maxCapacity ? parseInt(sessionForm.maxCapacity) : 1,
-            dayOfWeek: sessionForm.dayOfWeek || undefined
+            dayOfWeek: sessionForm.dayOfWeek || undefined,
+            phone: sessionForm.phone || ''
           })
         });
 
@@ -396,7 +399,8 @@ const TrainerManagement = () => {
         duration: item.duration || '',
         rate: item.rate || '',
         maxCapacity: item.maxCapacity || '',
-        dayOfWeek: item.dayOfWeek || ''
+        dayOfWeek: item.dayOfWeek || '',
+        phone: item.phone || ''
       });
     }
     setEditError('');
@@ -462,7 +466,8 @@ const TrainerManagement = () => {
             duration: parseInt(sessionForm.duration),
             rate: parseInt(sessionForm.rate, 10),
             maxCapacity: sessionForm.maxCapacity ? parseInt(sessionForm.maxCapacity) : 1,
-            dayOfWeek: sessionForm.dayOfWeek || undefined
+            dayOfWeek: sessionForm.dayOfWeek || undefined,
+            phone: sessionForm.phone || ''
           })
         });
 
@@ -910,6 +915,19 @@ const TrainerManagement = () => {
                     </select>
                   </div>
 
+                  <div className="form-group">
+                    <label>Phone Number</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="e.g., 9876543210"
+                      name="phone"
+                      value={sessionForm.phone}
+                      onChange={handleSessionFormChange}
+                      disabled={submitting}
+                    />
+                  </div>
+
                 </div>
               )}
             </div>
@@ -1184,6 +1202,19 @@ const TrainerManagement = () => {
                         <option key={day} value={day}>{day}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Phone Number</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="e.g., 9876543210"
+                      name="phone"
+                      value={sessionForm.phone}
+                      onChange={handleSessionFormChange}
+                      disabled={editSubmitting}
+                    />
                   </div>
 
                 </div>

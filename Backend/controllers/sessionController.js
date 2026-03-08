@@ -1,4 +1,5 @@
 const WorkoutSession = require('../models/WorkoutSession');
+const Booking = require('../models/Booking');
 
 // Get all workout sessions
 exports.getAllSessions = async (req, res) => {
@@ -43,7 +44,7 @@ exports.getSessionById = async (req, res) => {
 // Create workout session
 exports.createSession = async (req, res) => {
   try {
-    const { type, time, duration, rate, maxCapacity, dayOfWeek } = req.body;
+    const { type, time, duration, rate, maxCapacity, dayOfWeek, phone } = req.body;
 
     // Validate required fields
     if (!type || !time || !duration || rate === undefined) {
@@ -60,6 +61,7 @@ exports.createSession = async (req, res) => {
       rate: parseInt(rate, 10),
       maxCapacity: maxCapacity || 1,
       dayOfWeek: dayOfWeek || undefined,
+      phone: phone || '',
       isActive: true
     });
 
@@ -83,7 +85,7 @@ exports.createSession = async (req, res) => {
 exports.updateSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, time, duration, rate, maxCapacity, dayOfWeek } = req.body;
+    const { type, time, duration, rate, maxCapacity, dayOfWeek, phone } = req.body;
 
     // Validate required fields
     if (!type || !time || !duration || rate === undefined) {
@@ -107,6 +109,7 @@ exports.updateSession = async (req, res) => {
     session.rate = parseInt(rate, 10);
     session.maxCapacity = maxCapacity || session.maxCapacity;
     session.dayOfWeek = dayOfWeek || session.dayOfWeek;
+    session.phone = phone || '';
 
     await session.save();
 
@@ -136,6 +139,9 @@ exports.deleteSession = async (req, res) => {
         message: 'Session not found'
       });
     }
+
+    // Delete all bookings associated with this session
+    await Booking.deleteMany({ sessionId: id });
 
     await WorkoutSession.findByIdAndDelete(id);
 

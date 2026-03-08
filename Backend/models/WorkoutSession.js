@@ -47,6 +47,11 @@ const workoutSessionSchema = new mongoose.Schema({
     enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     description: 'Day of week for recurring session'
   },
+  phone: {
+    type: String,
+    required: false,
+    description: 'Contact phone number for the session instructor'
+  },
   isActive: {
     type: Boolean,
     default: true

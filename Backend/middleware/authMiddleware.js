@@ -1,11 +1,16 @@
 const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization');
+  const authHeader = req.header('Authorization');
 
-  if (!token) {
+  if (!authHeader) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
+
+  // Extract token from "Bearer <token>" format
+  const token = authHeader.startsWith('Bearer ') 
+    ? authHeader.slice(7) 
+    : authHeader;
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -14,8 +19,8 @@ const authMiddleware = (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error(err);
-    res.status(401).json({ message: 'Token is not valid' });
+    console.error('Token verification error:', err.message);
+    res.status(401).json({ message: 'Token is not valid', error: err.message });
   }
 };
 
