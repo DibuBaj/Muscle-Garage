@@ -188,6 +188,24 @@
   border-color: #721c24;
 }
 
+.status-full {
+  background-color: #ffe6e6;
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+/* Bookings Badge */
+.bookings-badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: rgba(255, 165, 0, 0.1);
+  color: var(--primary-color);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
 /* Action Buttons */
 .action-buttons {
   display: flex;
@@ -544,6 +562,118 @@
   }
 }
 
+/* Status Toggle Styles */
+.status-toggle-group {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #E8E8E8;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.status-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 1;
+  padding: 14px 16px;
+  border-radius: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #F8F9FA;
+  position: relative;
+}
+
+.status-radio:first-child {
+  border-right: 1px solid #E8E8E8;
+}
+
+.status-radio input[type="radio"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Active state for Active radio button */
+.status-radio:first-child input[type="radio"]:checked {
+  accent-color: #28a745;
+}
+
+/* Active state for Inactive radio button */
+.status-radio:nth-child(2) input[type="radio"]:checked {
+  accent-color: #dc3545;
+}
+
+.status-radio .radio-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  margin: 0;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+/* When Active radio is checked */
+.status-radio:first-child input[type="radio"]:checked ~ .radio-label {
+  color: white;
+}
+
+.status-radio:first-child input[type="radio"]:checked {
+  accent-color: #28a745;
+}
+
+.status-radio:first-child:has(input[type="radio"]:checked) {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(40, 167, 69, 0.15);
+}
+
+/* When Inactive radio is checked */
+.status-radio:nth-child(2) input[type="radio"]:checked ~ .radio-label {
+  color: white;
+}
+
+.status-radio:nth-child(2):has(input[type="radio"]:checked) {
+  background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+  color: white;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(220, 53, 69, 0.15);
+}
+
+/* Hover effect for unchecked radio buttons */
+.status-radio:hover:not(:has(input[type="radio"]:checked)) {
+  background-color: #EFEFEF;
+}
+
+.status-radio input[type="radio"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.status-radio:has(input[type="radio"]:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.status-radio input[type="radio"]:focus {
+  outline: none;
+}
+
+/* Fallback styling for browsers that don't support :has */
+@supports not selector(:has(*)) {
+  .status-radio input[type="radio"]:checked + .radio-label {
+    font-weight: 700;
+    color: white;
+  }
+}
+
 /* Modal Footer */
 .modal-footer {
   padding: 20px 32px 28px;
@@ -729,3 +859,8 @@
     font-size: 13px;
     padding: 10px 12px;
   }
+}
+.status-toggle-group .status-radio{
+      margin: 0;
+    display: flex;
+}

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
   SafeAreaView,
+  Linking,
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,8 @@ interface Session {
   dayOfWeek?: string;
   phone?: string;
   isActive: boolean;
+  bookingCount?: number;
+  isFull?: boolean;
   createdAt: string;
 }
 
@@ -95,7 +98,8 @@ export default function BookingScreen() {
         }
         
         if (sessionsRes.data.success) {
-          setSessions(sessionsRes.data.sessions.filter((s: Session) => s.isActive));
+          // Filter out full sessions
+          setSessions(sessionsRes.data.sessions.filter((s: Session) => s.isActive && !s.isFull));
         } else {
           console.error('Sessions response error:', sessionsRes.data);
         }
@@ -175,6 +179,20 @@ export default function BookingScreen() {
         setCertImagePreview(certPath);
         setShowCertPreview(true);
       }
+    }
+  };
+
+  const handleSocialMediaClick = async (url: string) => {
+    if (!url || url.trim() === '') return;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        console.log('Cannot open URL:', url);
+      }
+    } catch (error) {
+      console.error('Error opening social media URL:', error);
     }
   };
 
@@ -456,9 +474,24 @@ export default function BookingScreen() {
                     <View style={styles.detailSection}>
                       <Text style={styles.detailLabel}>Follow</Text>
                       <View style={styles.socialLinksRow}>
-                        {selectedTrainer.socialMedia?.instagram && <TouchableOpacity style={styles.socialIcon}><Ionicons name="logo-instagram" size={24} color={Colors.primary} /></TouchableOpacity>}
-                        {selectedTrainer.socialMedia?.facebook && <TouchableOpacity style={styles.socialIcon}><Ionicons name="logo-facebook" size={24} color={Colors.primary} /></TouchableOpacity>}
-                        {selectedTrainer.socialMedia?.x && <TouchableOpacity style={styles.socialIcon}><Ionicons name="logo-twitter" size={24} color={Colors.primary} /></TouchableOpacity>}
+                        {selectedTrainer.socialMedia?.instagram && <TouchableOpacity
+                          style={styles.socialIcon}
+                          onPress={() => handleSocialMediaClick(selectedTrainer.socialMedia?.instagram || '')}
+                        >
+                          <Ionicons name="logo-instagram" size={24} color={Colors.primary} />
+                        </TouchableOpacity>}
+                        {selectedTrainer.socialMedia?.facebook && <TouchableOpacity
+                          style={styles.socialIcon}
+                          onPress={() => handleSocialMediaClick(selectedTrainer.socialMedia?.facebook || '')}
+                        >
+                          <Ionicons name="logo-facebook" size={24} color={Colors.primary} />
+                        </TouchableOpacity>}
+                        {selectedTrainer.socialMedia?.x && <TouchableOpacity
+                          style={styles.socialIcon}
+                          onPress={() => handleSocialMediaClick(selectedTrainer.socialMedia?.x || '')}
+                        >
+                          <Ionicons name="logo-twitter" size={24} color={Colors.primary} />
+                        </TouchableOpacity>}
                       </View>
                     </View>
                   ) : null}
@@ -593,16 +626,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 32,
   },
   header: {
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: Colors.white,
+    marginTop:20
   },
   errorBanner: {
     flexDirection: 'row',
@@ -650,7 +684,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.white,
-    marginBottom: 4,
+    marginBottom: 10,
   },
   cardSubtitle: {
     fontSize: 13,
@@ -791,6 +825,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(229, 122, 37, 0.3)',
+    activeOpacity: 0.7,
   },
   activeCard: {
     backgroundColor: 'rgba(40, 167, 69, 0.1)',

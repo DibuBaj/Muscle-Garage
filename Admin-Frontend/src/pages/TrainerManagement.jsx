@@ -52,7 +52,8 @@ const TrainerManagement = () => {
       facebook: '',
       x: ''
     },
-    rate: ''
+    rate: '',
+    isActive: true
   });
 
   // Session form state
@@ -63,7 +64,8 @@ const TrainerManagement = () => {
     rate: '',
     maxCapacity: '',
     dayOfWeek: '',
-    phone: ''
+    phone: '',
+    isActive: true
   });
 
   const [formError, setFormError] = useState('');
@@ -145,7 +147,8 @@ const TrainerManagement = () => {
         facebook: '',
         x: ''
       },
-      rate: ''
+      rate: '',
+      isActive: true
     });
     setSessionForm({
       type: '',
@@ -154,7 +157,8 @@ const TrainerManagement = () => {
       rate: '',
       maxCapacity: '',
       dayOfWeek: '',
-      phone: ''
+      phone: '',
+      isActive: true
     });
     setFormError('');
   };
@@ -384,7 +388,8 @@ const TrainerManagement = () => {
           facebook: item.facebook || '',
           x: item.x || ''
         },
-        rate: item.rate || ''
+        rate: item.rate || '',
+        isActive: item.isActive !== undefined ? item.isActive : true
       });
     } else {
       setEditModal({
@@ -400,7 +405,8 @@ const TrainerManagement = () => {
         rate: item.rate || '',
         maxCapacity: item.maxCapacity || '',
         dayOfWeek: item.dayOfWeek || '',
-        phone: item.phone || ''
+        phone: item.phone || '',
+        isActive: item.isActive !== undefined ? item.isActive : true
       });
     }
     setEditError('');
@@ -429,6 +435,7 @@ const TrainerManagement = () => {
         formData.append('instagram', trainerForm.socialMedia.instagram);
         formData.append('facebook', trainerForm.socialMedia.facebook);
         formData.append('x', trainerForm.socialMedia.x);
+        formData.append('isActive', trainerForm.isActive);
         
         if (trainerForm.certification) {
           formData.append('certification', trainerForm.certification);
@@ -467,7 +474,8 @@ const TrainerManagement = () => {
             rate: parseInt(sessionForm.rate, 10),
             maxCapacity: sessionForm.maxCapacity ? parseInt(sessionForm.maxCapacity) : 1,
             dayOfWeek: sessionForm.dayOfWeek || undefined,
-            phone: sessionForm.phone || ''
+            phone: sessionForm.phone || '',
+            isActive: sessionForm.isActive
           })
         });
 
@@ -598,6 +606,7 @@ const TrainerManagement = () => {
                     <th>Duration (min)</th>
                     <th>Rate (Rs.)</th>
                     <th>Max Capacity</th>
+                    <th>Bookings</th>
                     <th>Day</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -611,10 +620,15 @@ const TrainerManagement = () => {
                       <td>{session.duration}</td>
                       <td>Rs. {session.rate.toLocaleString('en-PK')}</td>
                       <td>{session.maxCapacity}</td>
+                      <td>
+                        <span className="bookings-badge">
+                          {session.bookingCount || 0} / {session.maxCapacity}
+                        </span>
+                      </td>
                       <td>{session.dayOfWeek || '-'}</td>
                       <td>
-                        <span className={`status-badge status-${session.isActive ? 'active' : 'inactive'}`}>
-                          {session.isActive ? 'Active' : 'Inactive'}
+                        <span className={`status-badge status-${session.isFull ? 'full' : (session.isActive ? 'active' : 'inactive')}`}>
+                          {session.isFull ? 'Full' : (session.isActive ? 'Active' : 'Inactive')}
                         </span>
                       </td>
                       <td>
@@ -1054,6 +1068,34 @@ const TrainerManagement = () => {
                   </div>
 
                   <div className="form-group">
+                    <label style={{marginBottom: '12px'}}>Status</label>
+                    <div className="status-toggle-group">
+                      <label className="status-radio">
+                        <input
+                          type="radio"
+                          name="isActive"
+                          value="true"
+                          checked={trainerForm.isActive === true}
+                          onChange={() => setTrainerForm(prev => ({ ...prev, isActive: true }))}
+                          disabled={editSubmitting}
+                        />
+                        <span className="radio-label">Active</span>
+                      </label>
+                      <label className="status-radio">
+                        <input
+                          type="radio"
+                          name="isActive"
+                          value="false"
+                          checked={trainerForm.isActive === false}
+                          onChange={() => setTrainerForm(prev => ({ ...prev, isActive: false }))}
+                          disabled={editSubmitting}
+                        />
+                        <span className="radio-label">Inactive</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
                     <label>Certification (Image/PDF)</label>
                     <input
                       type="file"
@@ -1215,6 +1257,34 @@ const TrainerManagement = () => {
                       onChange={handleSessionFormChange}
                       disabled={editSubmitting}
                     />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{marginBottom: '12px'}}>Status</label>
+                    <div className="status-toggle-group">
+                      <label className="status-radio">
+                        <input
+                          type="radio"
+                          name="isActive"
+                          value="true"
+                          checked={sessionForm.isActive === true}
+                          onChange={() => setSessionForm(prev => ({ ...prev, isActive: true }))}
+                          disabled={editSubmitting}
+                        />
+                        <span className="radio-label">Active</span>
+                      </label>
+                      <label className="status-radio">
+                        <input
+                          type="radio"
+                          name="isActive"
+                          value="false"
+                          checked={sessionForm.isActive === false}
+                          onChange={() => setSessionForm(prev => ({ ...prev, isActive: false }))}
+                          disabled={editSubmitting}
+                        />
+                        <span className="radio-label">Inactive</span>
+                      </label>
+                    </div>
                   </div>
 
                 </div>

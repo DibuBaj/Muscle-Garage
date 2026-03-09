@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     color: Colors.lightGray,
   },
   name: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     color: Colors.white,
     marginTop: 4,

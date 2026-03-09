@@ -144,7 +144,7 @@ exports.createTrainer = async (req, res) => {
 exports.updateTrainer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, type, experience, phone, rate } = req.body;
+    const { name, type, experience, phone, rate, isActive } = req.body;
     // Handle social media fields from FormData
     let instagram = req.body['socialMedia[instagram]'] || req.body.instagram || '';
     let facebook = req.body['socialMedia[facebook]'] || req.body.facebook || '';
@@ -224,6 +224,10 @@ exports.updateTrainer = async (req, res) => {
       x: x.trim()
     };
     trainer.rate = parseInt(rate, 10);
+    // Update status if provided
+    if (isActive !== undefined && isActive !== null) {
+      trainer.isActive = isActive === true || isActive === 'true';
+    }
 
     await trainer.save();
 

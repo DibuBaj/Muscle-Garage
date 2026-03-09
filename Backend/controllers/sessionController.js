@@ -5,9 +5,27 @@ const Booking = require('../models/Booking');
 exports.getAllSessions = async (req, res) => {
   try {
     const sessions = await WorkoutSession.find().sort({ createdAt: -1 });
+    
+    // Get booking count for each session
+    const sessionsWithBookings = await Promise.all(
+      sessions.map(async (session) => {
+        const bookingCount = await Booking.countDocuments({
+          sessionId: session._id,
+          type: 'session',
+          expiresAt: { $gt: new Date() } // Only count active/non-expired bookings
+        });
+        
+        return {
+          ...session.toObject(),
+          bookingCount,
+          isFull: bookingCount >= session.maxCapacity
+        };
+      })
+    );
+    
     res.json({
       success: true,
-      sessions
+      sessions: sessionsWithBookings
     });
   } catch (err) {
     console.error('Get sessions error:', err);
@@ -85,7 +103,7 @@ exports.createSession = async (req, res) => {
 exports.updateSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, time, duration, rate, maxCapacity, dayOfWeek, phone } = req.body;
+    const { type, time, duration, rate, maxCapacity, dayOfWeek, phone, isActive } = req.body;
 
     // Validate required fields
     if (!type || !time || !duration || rate === undefined) {
@@ -110,6 +128,10 @@ exports.updateSession = async (req, res) => {
     session.maxCapacity = maxCapacity || session.maxCapacity;
     session.dayOfWeek = dayOfWeek || session.dayOfWeek;
     session.phone = phone || '';
+    // Update status if provided
+    if (isActive !== undefined && isActive !== null) {
+      session.isActive = isActive === true || isActive === 'true';
+    }
 
     await session.save();
 
