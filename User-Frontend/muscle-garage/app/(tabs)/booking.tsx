@@ -476,18 +476,21 @@ export default function BookingScreen() {
                       <View style={styles.socialLinksRow}>
                         {selectedTrainer.socialMedia?.instagram && <TouchableOpacity
                           style={styles.socialIcon}
+                          activeOpacity={0.7}
                           onPress={() => handleSocialMediaClick(selectedTrainer.socialMedia?.instagram || '')}
                         >
                           <Ionicons name="logo-instagram" size={24} color={Colors.primary} />
                         </TouchableOpacity>}
                         {selectedTrainer.socialMedia?.facebook && <TouchableOpacity
                           style={styles.socialIcon}
+                          activeOpacity={0.7}
                           onPress={() => handleSocialMediaClick(selectedTrainer.socialMedia?.facebook || '')}
                         >
                           <Ionicons name="logo-facebook" size={24} color={Colors.primary} />
                         </TouchableOpacity>}
                         {selectedTrainer.socialMedia?.x && <TouchableOpacity
                           style={styles.socialIcon}
+                          activeOpacity={0.7}
                           onPress={() => handleSocialMediaClick(selectedTrainer.socialMedia?.x || '')}
                         >
                           <Ionicons name="logo-twitter" size={24} color={Colors.primary} />
@@ -760,7 +763,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '85%',
     overflow: 'hidden',
   },
   modalHeader: {
@@ -825,7 +827,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(229, 122, 37, 0.3)',
-    activeOpacity: 0.7,
   },
   activeCard: {
     backgroundColor: 'rgba(40, 167, 69, 0.1)',
