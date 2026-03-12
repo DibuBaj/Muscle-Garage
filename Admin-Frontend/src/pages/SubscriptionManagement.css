@@ -307,7 +307,7 @@
   justify-content: center;
 }
 
-.btn-action {
+/* .btn-action {
   background-color: transparent;
   border: none;
   padding: 8px;
@@ -317,8 +317,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* width: 36px;
-  height: 36px; */
+  width: 36px;
+  height: 36px;
 }
 
 .btn-edit {
@@ -354,7 +354,7 @@
 .btn-action svg {
   width: 20px;
   height: 20px;
-}
+} */
 
 /* No Data */
 .no-data {
