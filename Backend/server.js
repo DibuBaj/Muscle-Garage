@@ -13,7 +13,10 @@ const { decreaseDaysDaily } = require('./controllers/subscriptionController');
 const SubscriptionPlan = require('./models/SubscriptionPlan');
 const cloudinary = require('./config/cloudinary');
 
-dotenv.config();
+// Only load .env in development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const app = express();
 
