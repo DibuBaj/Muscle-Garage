@@ -34,7 +34,4 @@ const subscriptionPlanSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Create index for name
-subscriptionPlanSchema.index({ name: 1 });
-
 module.exports = mongoose.model('SubscriptionPlan', subscriptionPlanSchema);
