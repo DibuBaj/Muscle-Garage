@@ -450,7 +450,7 @@ const SubscriptionManagement = () => {
                     <td>{new Date(plan.createdAt).toLocaleDateString()}</td>
                     <td className="actions">
                       <button
-                        className="btn-action btn-edit"
+                        className="edit-btn"
                         onClick={() => handleEditClick(plan)}
                         title="Edit plan"
                       >
@@ -460,7 +460,7 @@ const SubscriptionManagement = () => {
                         </svg>
                       </button>
                       <button
-                        className="btn-action btn-delete"
+                        className="delete-btn"
                         onClick={() => handleDeleteClick(plan._id, plan.name)}
                         title="Delete plan"
                       >
