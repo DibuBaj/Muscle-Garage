@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './UserManagement.css';
+import { API_URL } from '../utils/api';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -36,7 +37,7 @@ const UserManagement = () => {
 
   const fetchPlans = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/subscription/plans/active');
+      const response = await fetch(`${API_URL}/api/subscription/plans/active`);
       const data = await response.json();
 
       if (data.success) {
@@ -88,7 +89,7 @@ const UserManagement = () => {
       setError('');
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/user/admin/all', {
+      const response = await fetch(`${API_URL}/api/user/admin/all`, {
         headers: {
           'Authorization': token
         }
@@ -102,7 +103,7 @@ const UserManagement = () => {
           data.users.map(async (user) => {
             if (user.subscription && user.subscription._id) {
               try {
-                const subResponse = await fetch(`http://localhost:5000/api/subscription/admin/get/${user._id}`, {
+                const subResponse = await fetch(`${API_URL}/api/subscription/admin/get/${user._id}`, {
                   headers: {
                     'Authorization': token
                   }
@@ -139,7 +140,7 @@ const UserManagement = () => {
       setDeleting(true);
       
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5000/api/user/admin/${deleteModal.userId}`, {
+      const response = await fetch(`${API_URL}/api/user/admin/${deleteModal.userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': token
@@ -245,7 +246,7 @@ const UserManagement = () => {
     try {
       setSubmitting(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5000/api/subscription/admin/pause/${editModal.user.id}`, {
+      const response = await fetch(`${API_URL}/api/subscription/admin/pause/${editModal.user.id}`, {
         method: 'POST',
         headers: {
           'Authorization': token,
@@ -278,7 +279,7 @@ const UserManagement = () => {
     try {
       setSubmitting(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5000/api/subscription/admin/resume/${editModal.user.id}`, {
+      const response = await fetch(`${API_URL}/api/subscription/admin/resume/${editModal.user.id}`, {
         method: 'POST',
         headers: {
           'Authorization': token,
@@ -312,7 +313,7 @@ const UserManagement = () => {
     try {
       setSubmitting(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5000/api/subscription/admin/set/${editModal.user.id}`, {
+      const response = await fetch(`${API_URL}/api/subscription/admin/set/${editModal.user.id}`, {
         method: 'POST',
         headers: {
           'Authorization': token,
@@ -483,7 +484,7 @@ const UserManagement = () => {
       setCreateFormError('');
 
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/user/admin/create', {
+      const response = await fetch(`${API_URL}/api/user/admin/create`, {
         method: 'POST',
         headers: {
           'Authorization': token,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import draggerIcon from '../assets/dragger.png';
 import './SubscriptionManagement.css';
+import { API_URL } from '../utils/api';
 
 const SubscriptionManagement = () => {
   const [plans, setPlans] = useState([]);
@@ -45,7 +46,7 @@ const SubscriptionManagement = () => {
       setError('');
 
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/subscription/admin/plans', {
+      const response = await fetch(`${API_URL}/api/subscription/admin/plans`, {
         headers: {
           'Authorization': token,
         },
@@ -75,7 +76,7 @@ const SubscriptionManagement = () => {
       setDeleting(true);
 
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5000/api/subscription/admin/plans/${deleteModal.planId}`, {
+      const response = await fetch(`${API_URL}/api/subscription/admin/plans/${deleteModal.planId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': token,
@@ -155,7 +156,7 @@ const SubscriptionManagement = () => {
       setFormError('');
 
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/subscription/admin/plans', {
+      const response = await fetch(`${API_URL}/api/subscription/admin/plans`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +194,7 @@ const SubscriptionManagement = () => {
       setFormError('');
 
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5000/api/subscription/admin/plans/${editModal.plan._id}`, {
+      const response = await fetch(`${API_URL}/api/subscription/admin/plans/${editModal.plan._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +257,7 @@ const SubscriptionManagement = () => {
   const persistPlanOrder = async (orderedPlans) => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/subscription/admin/plans/order', {
+      const response = await fetch(`${API_URL}/api/subscription/admin/plans/order`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

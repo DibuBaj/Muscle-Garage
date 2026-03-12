@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './TrainerManagement.css';
+import { API_URL } from '../utils/api';
 
 const TRAINER_TYPES = [
   'Weight Lifting',
@@ -102,8 +103,8 @@ const TrainerManagement = () => {
       setLoading(true);
       const token = localStorage.getItem('adminToken');
       
-      const trainerRes = await fetch('http://localhost:5000/api/trainer/all');
-      const sessionRes = await fetch('http://localhost:5000/api/session/all');
+      const trainerRes = await fetch(`${API_URL}/api/trainer/all`);
+      const sessionRes = await fetch(`${API_URL}/api/session/all`);
 
       const trainerData = await trainerRes.json();
       const sessionData = await sessionRes.json();
@@ -268,7 +269,7 @@ const TrainerManagement = () => {
           formData.append('certification', trainerForm.certification);
         }
 
-        const response = await fetch('http://localhost:5000/api/trainer/admin/create', {
+        const response = await fetch(`${API_URL}/api/trainer/admin/create`, {
           method: 'POST',
           headers: {
             'Authorization': token
@@ -291,7 +292,7 @@ const TrainerManagement = () => {
         setSubmitting(true);
         const token = localStorage.getItem('adminToken');
 
-        const response = await fetch('http://localhost:5000/api/session/admin/create', {
+        const response = await fetch(`${API_URL}/api/session/admin/create`, {
           method: 'POST',
           headers: {
             'Authorization': token,
@@ -341,7 +342,7 @@ const TrainerManagement = () => {
       const token = localStorage.getItem('adminToken');
       const endpoint = deleteModal.type === 'trainer' ? 'trainer' : 'session';
 
-      const response = await fetch(`http://localhost:5000/api/${endpoint}/admin/${deleteModal.id}`, {
+      const response = await fetch(`${API_URL}/api/${endpoint}/admin/${deleteModal.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': token
@@ -441,7 +442,7 @@ const TrainerManagement = () => {
           formData.append('certification', trainerForm.certification);
         }
 
-        const response = await fetch(`http://localhost:5000/api/trainer/admin/${editModal.id}`, {
+        const response = await fetch(`${API_URL}/api/trainer/admin/${editModal.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': token
@@ -461,7 +462,7 @@ const TrainerManagement = () => {
       } else {
         if (!validateSessionForm()) return;
 
-        const response = await fetch(`http://localhost:5000/api/session/admin/${editModal.id}`, {
+        const response = await fetch(`${API_URL}/api/session/admin/${editModal.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': token,
