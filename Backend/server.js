@@ -88,10 +88,17 @@ cron.schedule('0 0 * * *', () => {
   decreaseDaysDaily();
 });
 
-const PORT = process.env.PORT || 5000;
-const HOST = '0.0.0.0';
-app.listen(PORT, HOST, async () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
-  // Initialize default subscription plans when server starts
-  await initializeDefaultPlans();
-});
+// Initialize default plans on startup
+initializeDefaultPlans();
+
+// Export app for Vercel serverless
+module.exports = app;
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  const HOST = '0.0.0.0';
+  app.listen(PORT, HOST, async () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
+  });
+}
