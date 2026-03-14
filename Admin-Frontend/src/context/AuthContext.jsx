@@ -9,28 +9,55 @@ export const AuthProvider = ({ children }) => {
 
   // Check if admin is already logged in (from localStorage)
   useEffect(() => {
-    const storedAuth = localStorage.getItem('adminAuth');
-    const storedToken = localStorage.getItem('adminToken');
-    if (storedAuth && storedToken) {
-      const { email } = JSON.parse(storedAuth);
-      setAdminEmail(email);
-      setIsAuthenticated(true);
+    try {
+      const storedAuth = localStorage.getItem('adminAuth');
+      const storedToken = localStorage.getItem('adminToken');
+      
+      if (storedAuth && storedToken) {
+        try {
+          const { email } = JSON.parse(storedAuth);
+          setAdminEmail(email);
+          setIsAuthenticated(true);
+        } catch (parseError) {
+          // If JSON parse fails, clear bad data
+          localStorage.removeItem('adminAuth');
+          localStorage.removeItem('adminToken');
+        }
+      }
+    } catch (error) {
+      // Handle any localStorage access errors (e.g., in private browsing)
+      console.error('Failed to access localStorage:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = (email, token) => {
-    setAdminEmail(email);
-    setIsAuthenticated(true);
-    localStorage.setItem('adminAuth', JSON.stringify({ email }));
-    localStorage.setItem('adminToken', token);
+    try {
+      setAdminEmail(email);
+      setIsAuthenticated(true);
+      localStorage.setItem('adminAuth', JSON.stringify({ email }));
+      localStorage.setItem('adminToken', token);
+    } catch (error) {
+      console.error('Failed to save auth to localStorage:', error);
+      // Still set the state even if localStorage fails
+      setAdminEmail(email);
+      setIsAuthenticated(true);
+    }
   };
 
   const logout = () => {
-    setAdminEmail(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('adminAuth');
-    localStorage.removeItem('adminToken');
+    try {
+      setAdminEmail(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('adminAuth');
+      localStorage.removeItem('adminToken');
+    } catch (error) {
+      console.error('Failed to clear auth from localStorage:', error);
+      // Still clear the state
+      setAdminEmail(null);
+      setIsAuthenticated(false);
+    }
   };
 
   return (
