@@ -72,6 +72,18 @@ const Sidebar = ({ isOpen, onLogout }) => {
           </svg>
           <span>Trainer/Session</span>
         </Link>
+
+        <Link
+          to="/admin/supplement-store"
+          className={`nav-link ${isActive('/admin/supplement-store') ? 'active' : ''}`}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 5h18l-1.5 9h-15z" strokeWidth="2" />
+            <circle cx="9" cy="19" r="1.5" strokeWidth="2" />
+            <circle cx="17" cy="19" r="1.5" strokeWidth="2" />
+          </svg>
+          <span>Supplement Store</span>
+        </Link>
       </nav>
       
       <div className="sidebar-bottom">
