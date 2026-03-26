@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './TrainerManagement.css';
 import { API_URL } from '../utils/api';
 
@@ -81,6 +81,11 @@ const TrainerManagement = () => {
   const [deleteModal, setDeleteModal] = useState({ show: false, type: null, id: null, name: '' });
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
+  // Modal refs
+  const createModalRef = useRef(null);
+  const editModalRef = useRef(null);
+  const deleteModalRef = useRef(null);
+
   // Fetch trainers and sessions on mount
   useEffect(() => {
     fetchTrainersAndSessions();
@@ -97,6 +102,54 @@ const TrainerManagement = () => {
     document.addEventListener('wheel', handleWheel, { passive: false });
     return () => document.removeEventListener('wheel', handleWheel, { passive: false });
   }, []);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (createModalRef.current && !createModalRef.current.contains(event.target)) {
+        setCreateModal({ show: false });
+      }
+    };
+
+    if (createModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [createModal.show]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (editModalRef.current && !editModalRef.current.contains(event.target)) {
+        setEditModal({ show: false, type: null, id: null, data: null });
+      }
+    };
+
+    if (editModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [editModal.show]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (deleteModalRef.current && !deleteModalRef.current.contains(event.target)) {
+        setDeleteModal({ show: false, type: null, id: null, name: '' });
+      }
+    };
+
+    if (deleteModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [deleteModal.show]);
 
   const fetchTrainersAndSessions = async () => {
     try {
@@ -666,7 +719,7 @@ const TrainerManagement = () => {
       {/* Create Modal */}
       {createModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content create-modal">
+          <div className="modal-content create-modal" ref={createModalRef}>
             <div className="trainer-management-modal-header">
               <h2>Create New Entry</h2>
               <button 
@@ -970,7 +1023,7 @@ const TrainerManagement = () => {
       {/* Edit Modal */}
       {editModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content create-modal">
+          <div className="modal-content create-modal" ref={editModalRef}>
             <div className="trainer-management-modal-header">
               <h2>Edit {editModal.type === 'trainer' ? 'Trainer' : 'Session'}</h2>
               <button 
@@ -1315,7 +1368,7 @@ const TrainerManagement = () => {
       {/* Delete Modal */}
       {deleteModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" ref={deleteModalRef}>
             <div className="trainer-management-modal-header">
               <h2>Confirm Delete</h2>
             </div>

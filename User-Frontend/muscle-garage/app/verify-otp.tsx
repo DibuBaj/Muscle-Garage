@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     marginBottom: 10,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   subtitle: {
     fontSize: 16,
@@ -219,10 +220,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 40,
     lineHeight: 24,
+    fontFamily: 'Poppins',
   },
   emailText: {
     color: Colors.primary,
     fontWeight: '600',
+    fontFamily: 'Poppins',
   },
   otpContainer: {
     flexDirection: 'row',

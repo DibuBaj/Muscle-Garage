@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
@@ -10,6 +10,7 @@ const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [logoutModal, setLogoutModal] = useState(false);
+  const logoutModalRef = useRef(null);
 
   const handleLogoutClick = () => {
     setLogoutModal(true);
@@ -25,6 +26,22 @@ const AdminLayout = ({ children }) => {
     setLogoutModal(false);
   };
 
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (logoutModalRef.current && !logoutModalRef.current.contains(event.target)) {
+        setLogoutModal(false);
+      }
+    };
+
+    if (logoutModal) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [logoutModal]);
+
   return (
     <div className="admin-layout">
       <div className="admin-main">
@@ -38,7 +55,7 @@ const AdminLayout = ({ children }) => {
       {/* Logout Confirmation Modal */}
       {logoutModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" ref={logoutModalRef}>
             <div className="modal-header">
               <h2>Confirm Logout</h2>
             </div>

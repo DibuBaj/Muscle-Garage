@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -29,16 +29,27 @@ interface Subscription {
 interface Booking {
   _id: string;
   userId: string;
-  itemId: string;
-  kind: 'session' | 'trainer';
-  title: string;
+  itemId?: string;
+  trainerId?: string;
+  sessionId?: string;
+  kind?: 'session' | 'trainer';
+  type?: 'trainer' | 'session';
+  title?: string;
+  trainerName?: string;
+  sessionName?: string;
   subtitle?: string;
-  startDate: string;
-  endDate: string;
-  daysLeft: number;
-  totalDays: number;
-  status: 'active' | 'completed' | 'cancelled';
+  startDate?: string;
+  bookedAt?: string;
+  endDate?: string;
+  expiresAt?: string;
+  daysLeft?: number;
+  totalDays?: number;
+  status?: 'active' | 'completed' | 'cancelled';
+  isActive?: boolean;
   price?: number;
+  trainerRate?: number;
+  trainerPhone?: string;
+  trainerType?: string;
   meta?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
@@ -48,8 +59,8 @@ export default function DashboardScreen() {
   const { user, logout, token } = useAuth();
   const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  // const [sessionBookings, setSessionBookings] = useState<Booking[]>([]);
-  // const [trainerBookings, setTrainerBookings] = useState<Booking[]>([]);
+  const [sessionBookings, setSessionBookings] = useState<Booking[]>([]);
+  const [trainerBookings, setTrainerBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -80,25 +91,49 @@ export default function DashboardScreen() {
       }
 
       // Fetch bookings
-      /* try {
-        const bookingsResponse = await axios.get(`${API_URL}/bookings/me`, {
+      try {
+        const bookingsResponse = await axios.get(`${API_URL}/booking/my-bookings`, {
           headers: {
             Authorization: token,
           },
         });
 
-        if (bookingsResponse.data.success) {
-          const bookings = bookingsResponse.data.bookings || [];
-          const sessions = bookings.filter((b: Booking) => b.kind === 'session' && b.status === 'active');
-          const trainers = bookings.filter((b: Booking) => b.kind === 'trainer' && b.status === 'active');
+        console.log('Bookings response:', bookingsResponse.data);
+        
+        // Handle both response structures
+        let bookings = [];
+        if (bookingsResponse.data.bookings) {
+          bookings = bookingsResponse.data.bookings;
+        } else if (Array.isArray(bookingsResponse.data)) {
+          bookings = bookingsResponse.data;
+        }
+
+        if (bookings && bookings.length > 0) {
+          console.log('Raw bookings data:', bookings);
           
+          // Filter for active bookings - handle both old and new API response formats
+          const sessions = bookings.filter((b: Booking) => {
+            const isTrainerBooking = b.type === 'trainer' || b.kind === 'trainer';
+            const isSessionBooking = b.type === 'session' || b.kind === 'session';
+            const isActive = b.isActive || b.status === 'active';
+            return isSessionBooking && isActive;
+          });
+          
+          const trainers = bookings.filter((b: Booking) => {
+            const isTrainerBooking = b.type === 'trainer' || b.kind === 'trainer';
+            const isActive = b.isActive || b.status === 'active';
+            return isTrainerBooking && isActive;
+          });
+          
+          console.log('Sessions:', sessions, 'Trainers:', trainers);
           setSessionBookings(sessions);
           setTrainerBookings(trainers);
         }
       } catch (bookingErr) {
-        console.log('Bookings endpoint not yet available, skipping...');
-        // Bookings endpoint may not be available yet, so we'll show empty state
-      } */
+        console.log('Bookings endpoint error:', bookingErr);
+        setSessionBookings([]);
+        setTrainerBookings([]);
+      }
     } catch (err) {
       const error = err as AxiosError;
       console.error('Error fetching subscription:', error.response?.data || error.message);
@@ -112,9 +147,9 @@ export default function DashboardScreen() {
     router.push('/(tabs)/membership');
   };
 
-  /* const handleBookingPress = () => {
+  const handleBookingPress = () => {
     router.push('/(tabs)/booking');
-  }; */
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -138,7 +173,7 @@ export default function DashboardScreen() {
   const showSubscribePrompt = !isSubscriptionActive && !needsRenewal && (noSubscription || !!needsSubscription);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
@@ -176,10 +211,12 @@ export default function DashboardScreen() {
                   </View>
                 </View>
                 
-                <SubscriptionProgressBar
-                  daysLeft={subscription?.daysLeft || 0}
-                  totalDays={subscription?.totalDays || 0}
-                />
+                <View style={styles.circularProgressContainer}>
+                  <SubscriptionProgressBar
+                    daysLeft={subscription?.daysLeft || 0}
+                    totalDays={subscription?.totalDays || 0}
+                  />
+                </View>
               </View>
             )}
 
@@ -196,10 +233,12 @@ export default function DashboardScreen() {
                     Your subscription is paused until {subscription.pauseInfo?.pauseEndDate ? new Date(subscription.pauseInfo.pauseEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                   </Text>
                 </View>
-                <SubscriptionProgressBar
-                  daysLeft={subscription?.daysLeft || 0}
-                  totalDays={subscription?.totalDays || 0}
-                />
+                <View style={styles.circularProgressContainer}>
+                  <SubscriptionProgressBar
+                    daysLeft={subscription?.daysLeft || 0}
+                    totalDays={subscription?.totalDays || 0}
+                  />
+                </View>
               </View>
             )}
 
@@ -232,7 +271,7 @@ export default function DashboardScreen() {
             )}
 
             {/* Bookings Section */}
-            {/* <View style={styles.sectionContainer}>
+            <View style={styles.sectionContainer}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="bookmark-outline" size={24} color={Colors.primary} />
                 <Text style={styles.sectionTitle}>My Bookings</Text>
@@ -240,59 +279,68 @@ export default function DashboardScreen() {
 
               {sessionBookings.length > 0 || trainerBookings.length > 0 ? (
                 <View style={styles.bookingsList}>
-                  {sessionBookings.slice(0, 3).map((booking) => (
+                  {sessionBookings.slice(0, 2).map((booking) => (
                     <View key={booking._id} style={styles.bookingCard}>
                       <View style={styles.bookingTypeContainer}>
                         <View style={styles.bookingTypeIcon}>
                           <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
                         </View>
                         <View style={styles.bookingCardContent}>
-                          <Text style={styles.bookingTitle}>{booking.title}</Text>
+                          <Text style={styles.bookingTitle}>{booking.title || booking.sessionName || 'Session'}</Text>
                           {booking.subtitle && <Text style={styles.bookingSubtitle}>{booking.subtitle}</Text>}
                         </View>
                         <View style={styles.daysLeftBadge}>
-                          <Text style={styles.daysLeftText}>{booking.daysLeft}d</Text>
+                          <Text style={styles.daysLeftText}>{booking.daysLeft || 'N/A'}</Text>
                         </View>
                       </View>
                       <View style={styles.bookingMeta}>
                         <Text style={styles.bookingMetaText}>
-                          {new Date(booking.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(booking.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {booking.startDate ? new Date(booking.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' - ' + new Date(booking.endDate || booking.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Date N/A'}
                         </Text>
                       </View>
                     </View>
                   ))}
 
-                  {trainerBookings.slice(0, 3).map((booking) => (
-                    <View key={booking._id} style={styles.bookingCard}>
-                      <View style={styles.bookingTypeContainer}>
-                        <View style={styles.bookingTypeIcon}>
-                          <Ionicons name="person-outline" size={16} color={Colors.primary} />
+                  {trainerBookings.slice(0, 2).map((booking) => {
+                    const daysLeft = booking.expiresAt ? Math.ceil((new Date(booking.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                    const totalBookingDays = booking.bookedAt && booking.expiresAt ? Math.ceil((new Date(booking.expiresAt).getTime() - new Date(booking.bookedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                    
+                    // Don't show expired bookings
+                    if (daysLeft <= 0) return null;
+                    
+                    return (
+                      <View key={booking._id} style={styles.bookingCard}>
+                        <View style={styles.bookingTypeContainer}>
+                          <View style={styles.bookingTypeIcon}>
+                            <Ionicons name="person-outline" size={16} color={Colors.primary} />
+                          </View>
+                          <View style={styles.bookingCardContent}>
+                            <Text style={styles.bookingTitle}>{booking.trainerName || 'Trainer'}</Text>
+                            {booking.trainerType && <Text style={styles.bookingSubtitle}>{booking.trainerType}</Text>}
+                            {booking.trainerPhone && (
+                              <Text style={styles.bookingPhone}>{booking.trainerPhone}</Text>
+                            )}
+                          </View>
+                          <View style={styles.daysLeftBadge}>
+                            <Text style={styles.daysLeftText}>{daysLeft} days left</Text>
+                          </View>
                         </View>
-                        <View style={styles.bookingCardContent}>
-                          <Text style={styles.bookingTitle}>{booking.title}</Text>
-                          {booking.subtitle && <Text style={styles.bookingSubtitle}>{booking.subtitle}</Text>}
-                        </View>
-                        <View style={styles.daysLeftBadge}>
-                          <Text style={styles.daysLeftText}>{booking.daysLeft}d</Text>
+                        <View style={styles.bookingMeta}>
+                          <Text style={styles.bookingMetaText}>
+                            {totalBookingDays} days of booking • Rs. {booking.trainerRate || '0'}
+                          </Text>
                         </View>
                       </View>
-                      <View style={styles.bookingMeta}>
-                        <Text style={styles.bookingMetaText}>
-                          {new Date(booking.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(booking.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
+                    );
+                  }).filter(Boolean)}
 
-                  {(sessionBookings.length + trainerBookings.length) > 3 && (
-                    <TouchableOpacity 
-                      style={styles.viewAllButton}
-                      onPress={handleBookingPress}
-                    >
-                      <Text style={styles.viewAllButtonText}>View All Bookings</Text>
-                      <Ionicons name="arrow-forward-outline" size={16} color={Colors.primary} />
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity 
+                    style={styles.viewMoreButton}
+                    onPress={handleBookingPress}
+                  >
+                    <Text style={styles.viewMoreButtonText}>View More</Text>
+                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.primary} />
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.emptyStateCard}>
@@ -303,11 +351,11 @@ export default function DashboardScreen() {
                     style={styles.emptyStateButton}
                     onPress={handleBookingPress}
                   >
-                    <Text style={styles.emptyStateButtonText}>Explore Bookings</Text>
+                    <Text style={styles.emptyStateButtonText}>Browse Bookings</Text>
                   </TouchableOpacity>
                 </View>
               )}
-            </View> */}
+            </View>
 
             {/* Quick Stats Section */}
             {/* <View style={styles.sectionContainer}>
@@ -332,7 +380,7 @@ export default function DashboardScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -342,25 +390,28 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 60,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
-    marginTop: 50,
+    marginTop: 8,
   },
   greeting: {
     fontSize: 16,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   name: {
     fontSize: 20,
     fontWeight: 'bold',
     color: Colors.white,
     marginTop: 4,
+    fontFamily: 'Poppins',
   },
   logoutButton: {
     padding: 12,
@@ -386,12 +437,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     marginBottom: 4,
+    fontFamily: 'Poppins',
   },
   memberIdValue: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
     letterSpacing: 2,
+    fontFamily: 'Poppins',
   },
   loadingContainer: {
     height: 100,
@@ -418,6 +471,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.success,
+    fontFamily: 'Poppins',
   },
   pausedSubscriptionCard: {
     backgroundColor: Colors.cardBackground,
@@ -439,6 +493,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFA500',
+    fontFamily: 'Poppins',
   },
   pausedInfo: {
     marginBottom: 16,
@@ -446,6 +501,7 @@ const styles = StyleSheet.create({
   pausedInfoText: {
     fontSize: 13,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   subscriptionPromptCard: {
     backgroundColor: 'rgba(229, 122, 37, 0.1)',
@@ -465,12 +521,14 @@ const styles = StyleSheet.create({
     color: Colors.white,
     textAlign: 'center',
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   promptSubtitle: {
     fontSize: 14,
     color: Colors.lightGray,
     textAlign: 'center',
     marginBottom: 16,
+    fontFamily: 'Poppins',
   },
   promptButton: {
     backgroundColor: Colors.primary,
@@ -482,6 +540,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   // New styles for sections
   sectionContainer: {
@@ -530,10 +589,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginBottom: 4,
+    fontFamily: 'Poppins',
   },
   bookingSubtitle: {
     fontSize: 12,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
+  },
+  bookingPhone: {
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: '500',
+    marginTop: 4,
+    fontFamily: 'Poppins',
   },
   daysLeftBadge: {
     backgroundColor: Colors.primary,
@@ -545,6 +613,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   bookingMeta: {
     marginTop: 8,
@@ -555,6 +624,7 @@ const styles = StyleSheet.create({
   bookingMetaText: {
     fontSize: 11,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -568,6 +638,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: Colors.primary,
+    fontFamily: 'Poppins',
   },
   emptyStateCard: {
     backgroundColor: Colors.cardBackground,
@@ -583,12 +654,14 @@ const styles = StyleSheet.create({
     color: Colors.white,
     marginTop: 16,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   emptyStateSubtitle: {
     fontSize: 13,
     color: Colors.lightGray,
     marginBottom: 20,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   emptyStateButton: {
     backgroundColor: Colors.primary,
@@ -624,5 +697,29 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: Colors.lightGray,
+  },
+  circularProgressContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 0,
+  },
+  viewMoreButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    gap: 8,
+  },
+  viewMoreButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary,
+    fontFamily: 'Poppins',
   },
 });

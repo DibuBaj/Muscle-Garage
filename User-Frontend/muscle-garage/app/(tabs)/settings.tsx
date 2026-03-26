@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -264,6 +265,7 @@ export default function SettingsScreen() {
           headers: {
             Authorization: token,
           },
+          transformRequest: [(data) => data],
         }
       );
 
@@ -334,17 +336,18 @@ export default function SettingsScreen() {
         type="error"
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-        </View>
-
-        {profileLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Settings</Text>
           </View>
-        ) : (
-          <>
+
+          {profileLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+          ) : (
+            <>
             {/* Profile Picture Section */}
             <View style={styles.profilePictureSection}>
               <View style={styles.profilePictureContainer}>
@@ -403,7 +406,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* User Profile Section */}
-        <View style={styles.section}>
+            <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="person-circle" size={28} color={Colors.primary} />
             <View>
@@ -584,10 +587,10 @@ export default function SettingsScreen() {
               </View>
             </>
           )}
-        </View>
+            </View>
 
-        {/* Security Section */}
-        <View style={styles.section}>
+            {/* Security Section */}
+            <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="lock-closed" size={28} color={Colors.primary} />
             <View>
@@ -719,23 +722,24 @@ export default function SettingsScreen() {
               </View>
             </>
           )}
-        </View>
+            </View>
 
-        {/* Logout Button */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out" size={20} color={Colors.error} />
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Logout Button */}
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out" size={20} color={Colors.error} />
+                <Text style={styles.logoutButtonText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
 
-        <View style={{ height: 40 }} />
-          </>
-        )}
-      </ScrollView>
+            <View style={{ height: 40 }} />
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -746,17 +750,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 60,
   },
   header: {
-    marginTop: 20,
+    marginTop: 8,
     marginBottom: 24,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   profilePictureSection: {
     backgroundColor: Colors.cardBackground,
@@ -813,11 +819,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.white,
     marginBottom: 4,
+    fontFamily: 'Poppins',
   },
   profileUsername: {
     fontSize: 14,
     color: Colors.lightGray,
     marginBottom: 16,
+    fontFamily: 'Poppins',
   },
   profilePictureActions: {
     flexDirection: 'row',
@@ -838,6 +846,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Poppins',
   },
   removePictureButton: {
     backgroundColor: 'rgba(196, 23, 23, 0.12)',
@@ -863,6 +872,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     flex: 1,
+    fontFamily: 'Poppins',
   },
   errorBanner: {
     backgroundColor: 'rgba(196, 23, 23, 0.95)',
@@ -878,6 +888,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     flex: 1,
+    fontFamily: 'Poppins',
   },
   loadingContainer: {
     height: 200,
@@ -897,11 +908,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   sectionSubtitle: {
     fontSize: 13,
     color: Colors.lightGray,
     marginTop: 2,
+    fontFamily: 'Poppins',
   },
   infoCard: {
     backgroundColor: Colors.cardBackground,
@@ -921,11 +934,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
     marginBottom: 6,
+    fontFamily: 'Poppins',
   },
   infoValue: {
     fontSize: 16,
     color: Colors.white,
     fontWeight: '500',
+    fontFamily: 'Poppins',
   },
   divider: {
     height: 1,
@@ -944,6 +959,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Poppins',
   },
   formCard: {
     backgroundColor: Colors.cardBackground,
@@ -961,6 +977,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   input: {
     backgroundColor: Colors.inputBackground,
@@ -971,6 +988,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     borderWidth: 1,
     borderColor: '#333333',
+    fontFamily: 'Poppins',
   },
   passwordInputContainer: {
     flexDirection: 'row',
@@ -996,6 +1014,7 @@ const styles = StyleSheet.create({
     color: Colors.darkGray,
     marginTop: 6,
     fontStyle: 'italic',
+    fontFamily: 'Poppins',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -1018,6 +1037,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Poppins',
   },
   buttonSave: {
     backgroundColor: Colors.primary,
@@ -1026,6 +1046,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Poppins',
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -1045,6 +1066,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.white,
     fontWeight: '600',
+    fontFamily: 'Poppins',
   },
   logoutButton: {
     backgroundColor: 'rgba(196, 23, 23, 0.12)',

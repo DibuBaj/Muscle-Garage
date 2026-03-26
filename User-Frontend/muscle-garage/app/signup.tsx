@@ -647,17 +647,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.white,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   subtitle: {
     fontSize: 14,
     color: Colors.lightGray,
     textAlign: 'center',
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   stepIndicator: {
     fontSize: 12,
     color: Colors.darkGray,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   progressBar: {
     flexDirection: 'row',
@@ -682,6 +685,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginBottom: 20,
+    fontFamily: 'Poppins',
   },
   inputContainer: {
     flexDirection: 'row',

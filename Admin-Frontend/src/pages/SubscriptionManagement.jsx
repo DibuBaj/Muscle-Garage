@@ -18,6 +18,9 @@ const SubscriptionManagement = () => {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [filters, setFilters] = useState({ active: false, inactive: false });
   const filterRef = useRef(null);
+  const deleteModalRef = useRef(null);
+  const editModalRef = useRef(null);
+  const createModalRef = useRef(null);
   const [draggedPlanId, setDraggedPlanId] = useState(null);
 
   useEffect(() => {
@@ -39,6 +42,54 @@ const SubscriptionManagement = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showFilterDropdown]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (deleteModalRef.current && !deleteModalRef.current.contains(event.target)) {
+        setDeleteModal({ show: false, planId: null, planName: '' });
+      }
+    };
+
+    if (deleteModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [deleteModal.show]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (editModalRef.current && !editModalRef.current.contains(event.target)) {
+        setEditModal({ show: false, plan: null });
+      }
+    };
+
+    if (editModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [editModal.show]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (createModalRef.current && !createModalRef.current.contains(event.target)) {
+        setCreateModal({ show: false });
+      }
+    };
+
+    if (createModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [createModal.show]);
 
   const fetchPlans = async () => {
     try {
@@ -483,7 +534,7 @@ const SubscriptionManagement = () => {
       {/* Delete Confirmation Modal */}
       {deleteModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content delete-modal">
+          <div className="modal-content delete-modal" ref={deleteModalRef}>
             <div className="modal-header">
               <h2>Delete Subscription Plan</h2>
             </div>
@@ -508,7 +559,7 @@ const SubscriptionManagement = () => {
       {/* Create Plan Modal */}
       {createModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content create-plan-modal">
+          <div className="modal-content create-plan-modal" ref={createModalRef}>
             <div className="modal-header">
               <h2>Create New Subscription Plan</h2>
               <button
@@ -590,7 +641,7 @@ const SubscriptionManagement = () => {
       {/* Edit Plan Modal */}
       {editModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content edit-plan-modal">
+          <div className="modal-content edit-plan-modal" ref={editModalRef}>
             <div className="modal-header">
               <h2>Edit Subscription Plan</h2>
               <button

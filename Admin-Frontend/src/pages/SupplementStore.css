@@ -49,6 +49,7 @@
   font-size: 24px;
   font-weight: 700;
   color: var(--text-color);
+  padding-bottom: 12px;
 }
 
 /* Error Message */
@@ -83,6 +84,7 @@
   overflow-x: auto;
   border-radius: 8px;
   border: 1px solid var(--border-color);
+  padding:32px;
 }
 
 .products-table,
@@ -95,7 +97,6 @@
 .products-table thead,
 .orders-table thead {
   border-bottom: 2px solid var(--primary-color);
-  background-color: #f8f9fa;
 }
 
 .products-table th,

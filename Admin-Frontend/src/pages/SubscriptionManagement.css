@@ -236,6 +236,7 @@
   overflow-x: auto;
   border-radius: 8px;
   border: 1px solid var(--border-color);
+  padding: 32px;
 }
 
 .plans-table {
@@ -245,21 +246,19 @@
 }
 
 .plans-table thead {
-  background-color: #f8f9fa;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--primary-color);
 }
 
 .plans-table th {
-  padding: 16px;
-  text-align: left;
+  padding: 16px 12px;
+  text-align: center;
   font-weight: 600;
   color: var(--text-color);
   white-space: nowrap;
-  text-align: center;
 }
 
 .plans-table td {
-  padding: 16px;
+  padding: 16px 12px;
   border-bottom: 1px solid var(--border-color);
   color: #333;
   text-align: center;

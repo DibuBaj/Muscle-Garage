@@ -469,16 +469,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.white,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   subtitle: {
     fontSize: 16,
     color: Colors.lightGray,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   stepIndicator: {
     fontSize: 12,
     color: Colors.darkGray,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   progressBar: {
     flexDirection: 'row',
@@ -515,6 +518,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: Colors.white,
     fontSize: 16,
+    fontFamily: 'Poppins',
   },
   eyeIcon: {
     padding: 4,
@@ -524,6 +528,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 16,
     marginLeft: 4,
+    fontFamily: 'Poppins',
   },
   errorContainer: {
     flexDirection: 'row',

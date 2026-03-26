@@ -54,6 +54,21 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+// User: get orders by email
+exports.getUserOrders = async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    const orders = await Order.find({ email }).sort({ createdAt: -1 });
+    res.json({ success: true, orders });
+  } catch (err) {
+    console.error('Get user orders error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch orders' });
+  }
+};
+
 // Admin: list orders
 exports.getOrders = async (req, res) => {
   try {

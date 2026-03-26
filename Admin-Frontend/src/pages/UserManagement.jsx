@@ -29,6 +29,9 @@ const UserManagement = () => {
   const [createFormError, setCreateFormError] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
   const filterRef = useRef(null);
+  const deleteModalRef = useRef(null);
+  const editModalRef = useRef(null);
+  const createModalRef = useRef(null);
 
   useEffect(() => {
     fetchUsers();
@@ -82,6 +85,54 @@ const UserManagement = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showFilterDropdown]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (deleteModalRef.current && !deleteModalRef.current.contains(event.target)) {
+        setDeleteModal({ show: false, userId: null, userName: '' });
+      }
+    };
+
+    if (deleteModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [deleteModal.show]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (editModalRef.current && !editModalRef.current.contains(event.target)) {
+        setEditModal({ show: false, user: null });
+      }
+    };
+
+    if (editModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [editModal.show]);
+
+  useEffect(() => {
+    const handleModalClickOutside = (event) => {
+      if (createModalRef.current && !createModalRef.current.contains(event.target)) {
+        setCreateModal({ show: false });
+      }
+    };
+
+    if (createModal.show) {
+      document.addEventListener('mousedown', handleModalClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleModalClickOutside);
+    };
+  }, [createModal.show]);
 
   const fetchUsers = async () => {
     try {
@@ -563,18 +614,19 @@ const UserManagement = () => {
                 </button>
               )}
             </div>
-            <button
-              className={`filter-button ${activeFilterCount > 0 ? 'has-filters' : ''} ${showFilterDropdown ? 'dropdown-open' : ''}`}
-              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              title="Filter users"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-              </svg>
-              Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-            </button>
-            {showFilterDropdown && (
-              <div className="filter-dropdown">
+            <div className="filter-container" ref={filterRef}>
+              <button
+                className={`filter-button ${activeFilterCount > 0 ? 'has-filters' : ''} ${showFilterDropdown ? 'dropdown-open' : ''}`}
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                title="Filter users"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+              </button>
+              {showFilterDropdown && (
+                <div className="filter-dropdown">
                 <div className="filter-header">Filter by Status</div>
                 <label className="filter-option">
                   <input
@@ -610,6 +662,7 @@ const UserManagement = () => {
                 </label>
               </div>
             )}
+          </div>
           </div>
           <button
             className="create-user-button"
@@ -726,7 +779,7 @@ const UserManagement = () => {
       {/* Delete Confirmation Modal */}
       {deleteModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" ref={deleteModalRef}>
             <div className="modal-header">
               <h2>Confirm Delete</h2>
             </div>
@@ -757,7 +810,7 @@ const UserManagement = () => {
       {/* Edit User Modal */}
       {editModal.show && editModal.user && (
         <div className="modal-overlay">
-          <div className="modal-content edit-modal">
+          <div className="modal-content edit-modal" ref={editModalRef}>
             <div className="modal-header">
               <h2>Edit User: {editModal.user.fullname}</h2>
             </div>
@@ -885,7 +938,7 @@ const UserManagement = () => {
       {/* Create User Modal */}
       {createModal.show && (
         <div className="modal-overlay">
-          <div className="modal-content create-user-modal">
+          <div className="modal-content create-user-modal" ref={createModalRef}>
             <div className="modal-header">
               <h2>Create New User</h2>
               <button 

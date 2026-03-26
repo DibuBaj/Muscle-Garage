@@ -107,6 +107,7 @@
   overflow-x: auto;
   border-radius: 8px;
   border: 1px solid var(--border-color);
+  padding:32px;
 }
 
 .trainers-table,
@@ -119,7 +120,6 @@
 .trainers-table thead,
 .sessions-table thead {
   border-bottom: 2px solid var(--primary-color);
-  background-color: #f8f9fa;
 }
 
 .trainers-table th,

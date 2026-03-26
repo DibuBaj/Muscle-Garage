@@ -275,16 +275,19 @@ const styles = StyleSheet.create({
     color: Colors.white,
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   subtitle: {
     fontSize: 16,
     color: Colors.lightGray,
     textAlign: 'center',
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   stepIndicator: {
     fontSize: 12,
     color: Colors.darkGray,
+    fontFamily: 'Poppins',
   },
   progressBar: {
     flexDirection: 'row',

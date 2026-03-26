@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { AuthProvider } from '@/context/AuthContext';
+import { useFonts } from '@/hooks/useFonts';
 import { useEffect } from 'react';
 import { Keyboard } from 'react-native';
 
@@ -10,6 +11,8 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const fontsLoaded = useFonts();
+
   useEffect(() => {
     // Ensure proper keyboard handling
     const subscription = Keyboard.addListener('keyboardDidHide', () => {
@@ -18,6 +21,10 @@ export default function RootLayout() {
     
     return () => subscription.remove();
   }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <AuthProvider>

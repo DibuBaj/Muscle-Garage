@@ -35,25 +35,41 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.darkGray,
+        tabBarInactiveTintColor: '#999',
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.cardBackground,
-          borderTopColor: '#333333',
-          borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 0,
-          paddingTop: 6,
+          backgroundColor: 'rgba(38, 38, 38, 0.8)',
+          borderTopWidth: 0,
+          height: 80,
+          paddingBottom: 8,
+          paddingTop: 8,
+          borderRadius: 20,
+          marginHorizontal: 12,
+          marginBottom: 10,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          borderCurve: 'continuous',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
+          elevation: 0,
+          zIndex: 1,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
+        },
+        tabBarIconStyle: {
+          marginBottom: 4,
         },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: 'Home',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size || 24} color={color} />
           ),
@@ -62,7 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="membership"
         options={{
-          title: 'Membership',
+          title: 'Plans',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="card" size={size || 24} color={color} />
           ),
@@ -77,7 +93,7 @@ export default function TabLayout() {
           ),
         }}
       />
-         <Tabs.Screen
+      <Tabs.Screen
         name="booking"
         options={{
           title: 'Booking',

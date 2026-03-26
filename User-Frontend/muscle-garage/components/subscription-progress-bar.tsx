@@ -33,6 +33,7 @@ export default function SubscriptionProgressBar({
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
     marginVertical: 16,
   },
   daysText: {
@@ -42,6 +43,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   progressBarContainer: {
+    width: '100%',
     height: 8,
     backgroundColor: '#333333',
     borderRadius: 4,

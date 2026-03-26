@@ -245,7 +245,7 @@
 
 .users-table th {
   padding: 16px 12px;
-  text-align: left;
+  text-align: center;
   font-weight: 600;
   font-size: 14px;
   text-transform: uppercase;
@@ -270,6 +270,7 @@
   padding: 16px 12px;
   font-size: 14px;
   color: #333;
+  text-align: center;
   vertical-align: middle;
 }
 

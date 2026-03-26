@@ -80,6 +80,44 @@ export default function BookingScreen() {
     fetchData();
   }, [token]);
 
+  // Clean up expired bookings from activeBookings and bookedIds
+  useEffect(() => {
+    const cleanupExpiredBookings = () => {
+      const now = new Date().getTime();
+      const activeBookingsData = activeBookings.filter((booking) => {
+        const bookingStart = new Date(booking.bookedAt).getTime();
+        const bookingEnd = bookingStart + 30 * 24 * 60 * 60 * 1000; // 30 days
+        const daysLeft = Math.ceil((bookingEnd - now) / (1000 * 60 * 60 * 24));
+        return daysLeft > 0;
+      });
+
+      // Update bookedIds to remove expired bookings
+      const expiredIds = new Set(activeBookings
+        .filter((booking) => {
+          const bookingStart = new Date(booking.bookedAt).getTime();
+          const bookingEnd = bookingStart + 30 * 24 * 60 * 60 * 1000;
+          const daysLeft = Math.ceil((bookingEnd - now) / (1000 * 60 * 60 * 24));
+          return daysLeft <= 0;
+        })
+        .map(b => b._id));
+
+      if (expiredIds.size > 0) {
+        setBookedIds(prev => {
+          const newSet = new Set(prev);
+          expiredIds.forEach(id => newSet.delete(id));
+          return newSet;
+        });
+        setActiveBookings(activeBookingsData);
+      }
+    };
+
+    cleanupExpiredBookings();
+    
+    // Check every minute for expired bookings
+    const interval = setInterval(cleanupExpiredBookings, 60000);
+    return () => clearInterval(interval);
+  }, [activeBookings]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -311,25 +349,41 @@ export default function BookingScreen() {
               <Text style={styles.emptyBookingText}>No bookings yet. Book a trainer or session to get started!</Text>
             </View>
           ) : (
-            activeBookings.map((booking) => (
-              <View key={booking._id} style={styles.activeCard}>
-                <View style={styles.activeCardHeader}>
-                  <View style={styles.activeCardContent}>
-                    <Text style={styles.activeCardTitle}>{booking.name}</Text>
-                    <Text style={styles.activeCardSubtitle}>{booking.subtitle}</Text>
-                    {booking.phone?.trim() && (
-                      <View style={styles.phoneSection}>
-                        <Ionicons name="call" size={16} color="#28a745" />
-                        <Text style={styles.phoneText}>{booking.phone}</Text>
-                      </View>
-                    )}
+            activeBookings.map((booking) => {
+              const bookingStart = new Date(booking.bookedAt).getTime();
+              const bookingEnd = bookingStart + 30 * 24 * 60 * 60 * 1000; // 30 days
+              const daysLeft = Math.ceil((bookingEnd - new Date().getTime()) / (1000 * 60 * 60 * 24));
+              const totalBookingDays = 30;
+              
+              return (
+                <View key={booking._id} style={styles.bookingCard}>
+                  <View style={styles.bookingTypeContainer}>
+                    <View style={styles.bookingTypeIcon}>
+                      <Ionicons 
+                        name={booking.type === 'trainer' ? 'person-outline' : 'calendar-outline'} 
+                        size={16} 
+                        color={Colors.primary} 
+                      />
+                    </View>
+                    <View style={styles.bookingCardContent}>
+                      <Text style={styles.bookingTitle}>{booking.name}</Text>
+                      {booking.subtitle && <Text style={styles.bookingSubtitle}>{booking.subtitle}</Text>}
+                      {booking.phone && (
+                        <Text style={styles.bookingPhone}>{booking.phone}</Text>
+                      )}
+                    </View>
+                    <View style={styles.daysLeftBadge}>
+                      <Text style={styles.daysLeftText}>{daysLeft} days left</Text>
+                    </View>
                   </View>
-                  <View style={styles.activeCardRight}>
-                    <Text style={styles.rateText}>Rs. {booking.rate}</Text>
+                  <View style={styles.bookingMeta}>
+                    <Text style={styles.bookingMetaText}>
+                      {totalBookingDays} days of booking • Rs. {booking.rate}
+                    </Text>
                   </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
 
           {/* Monthly Booking Note */}
@@ -629,17 +683,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 32,
+    paddingHorizontal: 20,
+    paddingTop: 35,
+    paddingBottom: 60,
   },
   header: {
     marginBottom: 24,
+    marginTop: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: Colors.white,
-    marginTop:20
+    fontFamily: 'Poppins',
   },
   errorBanner: {
     flexDirection: 'row',
@@ -656,6 +712,7 @@ const styles = StyleSheet.create({
     color: '#dc3545',
     fontSize: 14,
     flex: 1,
+    fontFamily: 'Poppins',
   },
   section: {
     marginBottom: 28,
@@ -665,6 +722,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.white,
     marginBottom: 14,
+    fontFamily: 'Poppins',
   },
   card: {
     backgroundColor: Colors.cardBackground,
@@ -688,11 +746,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.white,
     marginBottom: 10,
+    fontFamily: 'Poppins',
   },
   cardSubtitle: {
     fontSize: 13,
     color: Colors.lightGray,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   badgeRow: {
     flexDirection: 'row',
@@ -714,6 +774,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.primary,
     fontWeight: '600',
+    fontFamily: 'Poppins',
   },
   bookButton: {
     backgroundColor: Colors.primary,
@@ -726,6 +787,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Poppins',
   },
   emptyState: {
     alignItems: 'center',
@@ -736,6 +798,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   emptyBookingState: {
     alignItems: 'center',
@@ -975,5 +1038,72 @@ const styles = StyleSheet.create({
     color: Colors.lightGray,
     flex: 1,
     lineHeight: 18,
+  },
+  bookingCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  bookingTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  bookingTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: 'rgba(229, 122, 37, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  bookingCardContent: {
+    flex: 1,
+  },
+  bookingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.white,
+    marginBottom: 4,
+    fontFamily: 'Poppins',
+  },
+  bookingSubtitle: {
+    fontSize: 12,
+    color: Colors.lightGray,
+    fontFamily: 'Poppins',
+  },
+  bookingPhone: {
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: '500',
+    marginTop: 4,
+    fontFamily: 'Poppins',
+  },
+  daysLeftBadge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  daysLeftText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.white,
+    fontFamily: 'Poppins',
+  },
+  bookingMeta: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+  },
+  bookingMetaText: {
+    fontSize: 11,
+    color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
 });

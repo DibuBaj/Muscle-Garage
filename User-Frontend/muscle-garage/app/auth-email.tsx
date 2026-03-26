@@ -108,10 +108,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.white,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   subtitle: {
     fontSize: 16,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   optionsContainer: {
     gap: 16,
@@ -145,6 +147,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginBottom: 4,
+    fontFamily: 'Poppins',
   },
   optionDescription: {
     fontSize: 14,

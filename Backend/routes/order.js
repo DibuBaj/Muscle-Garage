@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const adminMiddleware = require('../middleware/adminMiddleware');
-const { createOrder, getOrders, updateOrderStatus } = require('../controllers/orderController');
+const { createOrder, getOrders, updateOrderStatus, getUserOrders } = require('../controllers/orderController');
 
-// Public (place order)
+// User routes
 router.post('/', createOrder);
+router.get('/user/history', getUserOrders);
 
-// Admin
+// Admin routes
 router.get('/admin/all', adminMiddleware, getOrders);
 router.put('/admin/:orderId/status', adminMiddleware, updateOrderStatus);
 

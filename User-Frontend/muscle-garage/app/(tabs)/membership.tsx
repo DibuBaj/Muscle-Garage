@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
@@ -196,7 +197,7 @@ export default function MembershipScreen() {
   const needsRenewal = subscription && subscription.daysLeft === 0 && subscription.hasSubscribedBefore;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ToastNotification
         visible={!!successMessage}
         message={successMessage}
@@ -260,10 +261,12 @@ export default function MembershipScreen() {
                   )}
                 </View>
 
-                <SubscriptionProgressBar
-                  daysLeft={subscription.daysLeft || 0}
-                  totalDays={subscription.totalDays || 0}
-                />
+                <View style={styles.circularProgressContainer}>
+                  <SubscriptionProgressBar
+                    daysLeft={subscription.daysLeft || 0}
+                    totalDays={subscription.totalDays || 0}
+                  />
+                </View>
               </View>
             )}
 
@@ -368,7 +371,7 @@ export default function MembershipScreen() {
         token={token}
         onPauseSuccess={fetchSubscription}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -378,17 +381,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 60,
   },
   header: {
     marginBottom: 24,
-    marginTop: 20,
+    marginTop: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   successBanner: {
     backgroundColor: 'rgba(40, 167, 69, 0.95)',
@@ -404,6 +409,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    fontFamily: 'Poppins',
   },
   errorBanner: {
     backgroundColor: 'rgba(196, 23, 23, 0.95)',
@@ -419,6 +425,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    fontFamily: 'Poppins',
   },
   loadingContainer: {
     height: 400,
@@ -443,6 +450,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: Colors.success,
+    fontFamily: 'Poppins',
   },
   cardTitleContainer: {
     flexDirection: 'row',
@@ -461,6 +469,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     backgroundColor: '#666666',
     borderRadius: 4,
+    fontFamily: 'Poppins',
   },
   currentSubscriptionCardPaused: {
     borderColor: '#FFA500',
@@ -478,11 +487,13 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 14,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   renewalAlertCard: {
     backgroundColor: 'rgba(196, 23, 23, 0.1)',
@@ -500,11 +511,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   renewalSubtitle: {
     fontSize: 14,
     color: Colors.lightGray,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   plansSection: {
     marginBottom: 24,
@@ -514,6 +527,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.white,
     marginBottom: 16,
+    fontFamily: 'Poppins',
   },
   plansContainer: {
     gap: 12,
@@ -536,16 +550,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   planPrice: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.primary,
     marginBottom: 4,
+    fontFamily: 'Poppins',
   },
   planDays: {
     fontSize: 14,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   checkmark: {
     position: 'absolute',
@@ -566,6 +583,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   pauseSection: {
     marginTop: 24,
@@ -593,10 +611,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginBottom: 4,
+    fontFamily: 'Poppins',
   },
   pauseDescription: {
     fontSize: 12,
     color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
   pauseButton: {
     backgroundColor: Colors.primary,
@@ -610,6 +630,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   resumeButton: {
     backgroundColor: '#FFA500',
@@ -622,6 +643,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
+    fontFamily: 'Poppins',
   },
   pausedStatusCard: {
     backgroundColor: 'rgba(255, 193, 7, 0.1)',
@@ -646,5 +668,10 @@ const styles = StyleSheet.create({
   pausedDate: {
     fontSize: 13,
     color: Colors.lightGray,
+  },
+  circularProgressContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 16,
   },
 });

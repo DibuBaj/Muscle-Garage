@@ -230,11 +230,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.white,
     marginBottom: 8,
+    fontFamily: 'Poppins',
   },
   subtitle: {
     fontSize: 16,
     color: Colors.lightGray,
     textAlign: 'center',
+    fontFamily: 'Poppins',
   },
   formContainer: {
     width: '100%',
@@ -257,6 +259,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: Colors.white,
     fontSize: 16,
+    fontFamily: 'Poppins',
   },
   eyeIcon: {
     padding: 4,
@@ -266,6 +269,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 8,
     marginLeft: 4,
+    fontFamily: 'Poppins',
   },
   loginButton: {
     backgroundColor: Colors.primary,
