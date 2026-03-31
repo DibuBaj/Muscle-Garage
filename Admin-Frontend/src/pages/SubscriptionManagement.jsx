@@ -22,6 +22,8 @@ const SubscriptionManagement = () => {
   const editModalRef = useRef(null);
   const createModalRef = useRef(null);
   const [draggedPlanId, setDraggedPlanId] = useState(null);
+  const [plansPage, setPlansPage] = useState(1);
+  const pageSize = 5;
 
   useEffect(() => {
     fetchPlans();
@@ -295,6 +297,11 @@ const SubscriptionManagement = () => {
     
     return matchesSearch && matchesFilter;
   });
+
+  // Reset pagination when the filtered list or filters/search change
+  useEffect(() => {
+    setPlansPage(1);
+  }, [filteredPlans.length, searchQuery, filters]);
   const reorderPlans = (currentPlans, draggedId, targetId) => {
     const updated = [...currentPlans];
     const fromIndex = updated.findIndex((plan) => plan._id === draggedId);
@@ -473,7 +480,9 @@ const SubscriptionManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredPlans.map(plan => (
+                {filteredPlans
+                  .slice((plansPage - 1) * pageSize, plansPage * pageSize)
+                  .map(plan => (
                   <tr
                     key={plan._id}
                     className={plan._id === draggedPlanId ? 'dragging' : ''}
@@ -527,6 +536,25 @@ const SubscriptionManagement = () => {
                 ))}
               </tbody>
             </table>
+            {filteredPlans.length > pageSize && (
+              <div className="table-pagination">
+                <button
+                  className="page-btn"
+                  onClick={() => setPlansPage((p) => Math.max(1, p - 1))}
+                  disabled={plansPage === 1}
+                >
+                  Prev
+                </button>
+                <span className="page-info">Page {plansPage} of {Math.ceil(filteredPlans.length / pageSize)}</span>
+                <button
+                  className="page-btn"
+                  onClick={() => setPlansPage((p) => Math.min(Math.ceil(filteredPlans.length / pageSize), p + 1))}
+                  disabled={plansPage >= Math.ceil(filteredPlans.length / pageSize)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

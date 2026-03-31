@@ -279,27 +279,35 @@ export default function DashboardScreen() {
 
               {sessionBookings.length > 0 || trainerBookings.length > 0 ? (
                 <View style={styles.bookingsList}>
-                  {sessionBookings.slice(0, 2).map((booking) => (
-                    <View key={booking._id} style={styles.bookingCard}>
-                      <View style={styles.bookingTypeContainer}>
-                        <View style={styles.bookingTypeIcon}>
-                          <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
+                  {sessionBookings.filter(booking => {
+                    const daysLeft = booking.expiresAt ? Math.ceil((new Date(booking.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                    return daysLeft > 0;
+                  }).slice(0, 2).map((booking) => {
+                    const daysLeft = booking.expiresAt ? Math.ceil((new Date(booking.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                    const totalBookingDays = booking.bookedAt && booking.expiresAt ? Math.ceil((new Date(booking.expiresAt).getTime() - new Date(booking.bookedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                    
+                    return (
+                      <View key={booking._id} style={styles.bookingCard}>
+                        <View style={styles.bookingTypeContainer}>
+                          <View style={styles.bookingTypeIcon}>
+                            <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
+                          </View>
+                          <View style={styles.bookingCardContent}>
+                            <Text style={styles.bookingTitle}>{booking.sessionType || 'Session'}</Text>
+                            {booking.sessionTime && <Text style={styles.bookingSubtitle}>{booking.sessionTime}</Text>}
+                          </View>
+                          <View style={styles.daysLeftBadge}>
+                            <Text style={styles.daysLeftText}>{daysLeft} days left</Text>
+                          </View>
                         </View>
-                        <View style={styles.bookingCardContent}>
-                          <Text style={styles.bookingTitle}>{booking.title || booking.sessionName || 'Session'}</Text>
-                          {booking.subtitle && <Text style={styles.bookingSubtitle}>{booking.subtitle}</Text>}
-                        </View>
-                        <View style={styles.daysLeftBadge}>
-                          <Text style={styles.daysLeftText}>{booking.daysLeft || 'N/A'}</Text>
+                        <View style={styles.bookingMeta}>
+                          <Text style={styles.bookingMetaText}>
+                            {totalBookingDays} days of booking • Rs. {booking.sessionRate || '0'}
+                          </Text>
                         </View>
                       </View>
-                      <View style={styles.bookingMeta}>
-                        <Text style={styles.bookingMetaText}>
-                          {booking.startDate ? new Date(booking.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' - ' + new Date(booking.endDate || booking.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Date N/A'}
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
+                    );
+                  })}
 
                   {trainerBookings.slice(0, 2).map((booking) => {
                     const daysLeft = booking.expiresAt ? Math.ceil((new Date(booking.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;

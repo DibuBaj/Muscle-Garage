@@ -9,6 +9,7 @@ import UserManagement from './pages/UserManagement';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import TrainerManagement from './pages/TrainerManagement';
 import SupplementStore from './pages/SupplementStore';
+import Settings from './pages/Settings';
 import './App.css';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
                     <Route path="/subscription-management" element={<SubscriptionManagement />} />
                     <Route path="/trainer-management" element={<TrainerManagement />} />
                     <Route path="/supplement-store" element={<SupplementStore />} />
+                    <Route path="/settings" element={<Settings />} />
                     <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>
                 </AdminLayout>

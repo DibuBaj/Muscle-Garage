@@ -23,6 +23,8 @@ const UserManagement = () => {
     expired: false,
     paused: false
   });
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [createModal, setCreateModal] = useState({ show: false });
   const [createFormData, setCreateFormData] = useState({ fullname: '', email: '', phone: '' });
@@ -133,6 +135,11 @@ const UserManagement = () => {
       document.removeEventListener('mousedown', handleModalClickOutside);
     };
   }, [createModal.show]);
+
+  // Reset pagination when filters/search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filters]);
 
   const fetchUsers = async () => {
     try {
@@ -705,11 +712,13 @@ const UserManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user, index) => {
+                {filteredUsers
+                  .slice((page - 1) * pageSize, page * pageSize)
+                  .map((user, index) => {
                   const subscriptionStatus = getSubscriptionStatus(user.subscription);
                   return (
                     <tr key={user.id}>
-                      <td>{index + 1}</td>
+                      <td>{(page - 1) * pageSize + index + 1}</td>
                       <td className="user-id">{user.memberId}</td>
                       <td>{user.fullname}</td>
                       <td>{user.username}</td>
@@ -772,6 +781,27 @@ const UserManagement = () => {
                 })}
               </tbody>
             </table>
+            {filteredUsers.length > pageSize && (
+              <div className="table-pagination">
+                <button
+                  className="page-btn"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Prev
+                </button>
+                <span className="page-info">
+                  Page {page} of {Math.ceil(filteredUsers.length / pageSize)}
+                </span>
+                <button
+                  className="page-btn"
+                  onClick={() => setPage((p) => Math.min(Math.ceil(filteredUsers.length / pageSize), p + 1))}
+                  disabled={page >= Math.ceil(filteredUsers.length / pageSize)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

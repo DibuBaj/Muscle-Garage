@@ -758,7 +758,7 @@ const StoreScreen = () => {
         <View style={styles.priceFilter}>
           <View style={styles.priceHeaderRow}>
             <Text style={styles.filterLabel}>Price Range</Text>
-            <Text style={styles.priceRangeText}>{formatRs(filters.min)} - {formatRs(filters.max)}</Text>
+            {/* <Text style={styles.priceRangeText}>{formatRs(filters.min)} - {formatRs(filters.max)}</Text> */}
           </View>
 
           <View style={styles.rangeLabelsRow}>
@@ -1094,7 +1094,7 @@ const styles = StyleSheet.create({
   
   gridList: { paddingHorizontal: 20 },
   gridWrapper: { justifyContent: 'space-between', gap: 10 },
-  gridContent: { paddingBottom: 20 },
+  gridContent: { paddingBottom: 140 },
   errorText: { color: Colors.error, textAlign: 'center', marginTop: 20, fontWeight: '600', fontFamily: 'Poppins' },
   
   toast: { position: 'absolute', top: 30, alignSelf: 'center', backgroundColor: '#2f2f2f', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, zIndex: 1002, flexDirection: 'row', alignItems: 'center' },

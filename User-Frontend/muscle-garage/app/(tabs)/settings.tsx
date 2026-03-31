@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   SafeAreaView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -249,21 +250,33 @@ export default function SettingsScreen() {
       // Create form data
       const formData = new FormData();
       const filename = uri.split('/').pop() || 'profile.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const match = /(\.\w+)$/.exec(filename);
+      const type = match ? `image/${match[1].replace('.', '')}` : 'image/jpeg';
 
-      formData.append('profilePicture', {
-        uri,
-        name: filename,
-        type,
-      } as any);
+      if (Platform.OS === 'web') {
+        // On web, convert the URI to a Blob so the browser sets multipart boundaries
+        const res = await fetch(uri);
+        const blob = await res.blob();
+        formData.append('profilePicture', blob, filename);
+      } else {
+        // On native, send the file descriptor
+        formData.append('profilePicture', {
+          uri,
+          name: filename,
+          type,
+        } as any);
+      }
 
       const response = await axios.post(
         `${API_URL}/user/profile-picture`,
         formData,
         {
           headers: {
-            Authorization: token,
+            Authorization: token?.startsWith('Bearer ')
+              ? token
+              : `Bearer ${token}`,
+            // Only set content-type manually for native; browser will add the boundary
+            ...(Platform.OS !== 'web' ? { 'Content-Type': 'multipart/form-data' } : {}),
           },
           transformRequest: [(data) => data],
         }

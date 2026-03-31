@@ -3,7 +3,7 @@ import { useState } from 'react';
 import './Sidebar.css';
 import logo from '../assets/logo.png';
 
-const Sidebar = ({ isOpen, onLogout }) => {
+const Sidebar = ({ isOpen, onLogout, newOrdersCount = 0 }) => {
   const location = useLocation();
 
   const isActive = (path) => {
@@ -82,7 +82,12 @@ const Sidebar = ({ isOpen, onLogout }) => {
             <circle cx="9" cy="19" r="1.5" strokeWidth="2" />
             <circle cx="17" cy="19" r="1.5" strokeWidth="2" />
           </svg>
-          <span>Supplement Store</span>
+          <span className="nav-link-label">Supplement Store</span>
+          {newOrdersCount > 0 && (
+            <span className="nav-badge" aria-label={`${newOrdersCount} new orders`}>
+              {newOrdersCount}
+            </span>
+          )}
         </Link>
       </nav>
       

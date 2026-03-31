@@ -80,6 +80,9 @@ const TrainerManagement = () => {
   // Delete modal states
   const [deleteModal, setDeleteModal] = useState({ show: false, type: null, id: null, name: '' });
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [trainerPage, setTrainerPage] = useState(1);
+  const [sessionPage, setSessionPage] = useState(1);
+  const pageSize = 5;
 
   // Modal refs
   const createModalRef = useRef(null);
@@ -150,6 +153,14 @@ const TrainerManagement = () => {
       document.removeEventListener('mousedown', handleModalClickOutside);
     };
   }, [deleteModal.show]);
+
+  useEffect(() => {
+    setTrainerPage(1);
+  }, [trainers]);
+
+  useEffect(() => {
+    setSessionPage(1);
+  }, [sessions]);
 
   const fetchTrainersAndSessions = async () => {
     try {
@@ -602,7 +613,9 @@ const TrainerManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {trainers.map(trainer => (
+                  {trainers
+                    .slice((trainerPage - 1) * pageSize, trainerPage * pageSize)
+                    .map(trainer => (
                     <tr key={trainer._id}>
                       <td className="trainer-name">{trainer.name}</td>
                       <td>{trainer.type}</td>
@@ -636,6 +649,25 @@ const TrainerManagement = () => {
                   ))}
                 </tbody>
               </table>
+              {trainers.length > pageSize && (
+                <div className="table-pagination">
+                  <button
+                    className="page-btn"
+                    onClick={() => setTrainerPage((p) => Math.max(1, p - 1))}
+                    disabled={trainerPage === 1}
+                  >
+                    Prev
+                  </button>
+                  <span className="page-info">Page {trainerPage} of {Math.ceil(trainers.length / pageSize)}</span>
+                  <button
+                    className="page-btn"
+                    onClick={() => setTrainerPage((p) => Math.min(Math.ceil(trainers.length / pageSize), p + 1))}
+                    disabled={trainerPage >= Math.ceil(trainers.length / pageSize)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="no-data">
@@ -667,7 +699,9 @@ const TrainerManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sessions.map(session => (
+                  {sessions
+                    .slice((sessionPage - 1) * pageSize, sessionPage * pageSize)
+                    .map(session => (
                     <tr key={session._id}>
                       <td>{session.type}</td>
                       <td>{session.time}</td>
@@ -707,6 +741,25 @@ const TrainerManagement = () => {
                   ))}
                 </tbody>
               </table>
+              {sessions.length > pageSize && (
+                <div className="table-pagination">
+                  <button
+                    className="page-btn"
+                    onClick={() => setSessionPage((p) => Math.max(1, p - 1))}
+                    disabled={sessionPage === 1}
+                  >
+                    Prev
+                  </button>
+                  <span className="page-info">Page {sessionPage} of {Math.ceil(sessions.length / pageSize)}</span>
+                  <button
+                    className="page-btn"
+                    onClick={() => setSessionPage((p) => Math.min(Math.ceil(sessions.length / pageSize), p + 1))}
+                    disabled={sessionPage >= Math.ceil(sessions.length / pageSize)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="no-data">

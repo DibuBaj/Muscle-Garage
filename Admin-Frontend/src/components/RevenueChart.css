@@ -1,0 +1,159 @@
+.chart-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 24px 0;
+}
+
+.chart-wrapper {
+  width: 100%;
+  min-height: 350px;
+  overflow-x: auto;
+}
+
+.simple-chart {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  padding: 40px 20px 20px 20px;
+  min-height: 300px;
+  justify-content: space-around;
+}
+
+.chart-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 80px;
+}
+
+.chart-bars {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 250px;
+  justify-content: center;
+}
+
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bar {
+  width: 24px;
+  min-height: 10px;
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bar:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: scaleY(1.05);
+}
+
+.bar-subscription {
+  background: linear-gradient(to top, #3b82f6, #60a5fa);
+}
+
+.bar-supplement {
+  background: linear-gradient(to top, #8b5cf6, #a78bfa);
+}
+
+.bar-booking {
+  background: linear-gradient(to top, #10b981, #34d399);
+}
+
+.bar-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.chart-month {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-top: 8px;
+}
+
+.chart-total {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 350px;
+  color: #999;
+  font-size: 14px;
+}
+
+.custom-tooltip {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.custom-tooltip p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #333;
+}
+
+.tooltip-month {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.tooltip-total {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 8px;
+  margin-top: 8px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .simple-chart {
+    gap: 12px;
+  }
+
+  .bar {
+    width: 18px;
+  }
+
+  .chart-bars {
+    height: 180px;
+  }
+
+  .chart-month {
+    font-size: 11px;
+  }
+
+  .chart-total {
+    font-size: 10px;
+  }
+}

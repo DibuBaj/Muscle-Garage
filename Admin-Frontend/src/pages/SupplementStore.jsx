@@ -43,6 +43,9 @@ const SupplementStore = () => {
   const [statusUpdating, setStatusUpdating] = useState('');
   const [uploadingImages, setUploadingImages] = useState({});
   const [uploadErrors, setUploadErrors] = useState({});
+  const [productPage, setProductPage] = useState(1);
+  const [orderPage, setOrderPage] = useState(1);
+  const pageSize = 5;
   const deleteModalRef = useRef(null);
   const productModalRef = useRef(null);
 
@@ -108,6 +111,14 @@ const SupplementStore = () => {
       document.removeEventListener('mousedown', handleModalClickOutside);
     };
   }, [showProductModal]);
+
+  useEffect(() => {
+    setProductPage(1);
+  }, [products]);
+
+  useEffect(() => {
+    setOrderPage(1);
+  }, [orders]);
 
   const openCreate = () => {
     setEditing(null);
@@ -272,7 +283,9 @@ const SupplementStore = () => {
               </thead>
               <tbody>
                 {products.length > 0 ? (
-                  products.map((p) => (
+                  products
+                    .slice((productPage - 1) * pageSize, productPage * pageSize)
+                    .map((p) => (
                     <tr key={p._id}>
                       <td>
                         <img 
@@ -326,6 +339,25 @@ const SupplementStore = () => {
                 )}
               </tbody>
             </table>
+            {products.length > pageSize && (
+              <div className="table-pagination">
+                <button
+                  className="page-btn"
+                  onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+                  disabled={productPage === 1}
+                >
+                  Prev
+                </button>
+                <span className="page-info">Page {productPage} of {Math.ceil(products.length / pageSize)}</span>
+                <button
+                  className="page-btn"
+                  onClick={() => setProductPage((p) => Math.min(Math.ceil(products.length / pageSize), p + 1))}
+                  disabled={productPage >= Math.ceil(products.length / pageSize)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -351,7 +383,9 @@ const SupplementStore = () => {
               </thead>
               <tbody>
                 {orders.length > 0 ? (
-                  orders.map((o) => (
+                  orders
+                    .slice((orderPage - 1) * pageSize, orderPage * pageSize)
+                    .map((o) => (
                     <tr key={o._id}>
                       <td>{o.id || o._id?.slice(0, 8)}</td>
                       <td>
@@ -398,6 +432,25 @@ const SupplementStore = () => {
                 )}
               </tbody>
             </table>
+            {orders.length > pageSize && (
+              <div className="table-pagination">
+                <button
+                  className="page-btn"
+                  onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                  disabled={orderPage === 1}
+                >
+                  Prev
+                </button>
+                <span className="page-info">Page {orderPage} of {Math.ceil(orders.length / pageSize)}</span>
+                <button
+                  className="page-btn"
+                  onClick={() => setOrderPage((p) => Math.min(Math.ceil(orders.length / pageSize), p + 1))}
+                  disabled={orderPage >= Math.ceil(orders.length / pageSize)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </section>
       </div>
