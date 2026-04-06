@@ -99,7 +99,7 @@ export default function PaymentCallbackScreen() {
           setMessage('Order placed successfully!');
         }
         setTimeout(() => {
-          router.replace('/(tabs)/store');
+          router.replace(`/(tabs)/store?paymentSuccess=1&paymentTs=${Date.now()}`);
         }, 900);
       } catch (error: any) {
         const backendMessage = error?.response?.data?.message;

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, TextInput, Animated, StyleSheet, ActivityIndicator, Modal, SafeAreaView, PanResponder, BackHandler, Linking } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import MultiSlider from '@ptomasroos/react-native-multi-slider';
 import * as ExpoLinking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { API_URL } from '@/constants/api';
 import { useAuth } from '@/context/AuthContext';
@@ -40,6 +41,19 @@ interface Order {
   shippingCost: number;
 }
 
+interface NepalWardRow {
+  province_en: string;
+  district_en: string;
+  municipality_en: string;
+  ward_en: string;
+  province_np?: string;
+  district_np?: string;
+  municipality_np?: string;
+  ward_np?: string;
+}
+
+const NEPAL_WARD_ROWS: NepalWardRow[] = require('@/assets/nepal-ward-level-full.json');
+
 const StoreScreen = () => {
   const SORT_OPTIONS = [
     { key: 'alpha-asc', label: 'Alphabet A-Z' },
@@ -51,6 +65,7 @@ const StoreScreen = () => {
   ] as const;
 
   const auth = useAuth();
+  const params = useLocalSearchParams<{ paymentSuccess?: string; paymentTs?: string }>();
   const scrollHandler = useLiquidTabBarScrollHandler();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -66,12 +81,13 @@ const StoreScreen = () => {
   const [toast, setToast] = useState('');
   const [filters, setFilters] = useState({ cats: new Set<string>(), inStock: false, min: 0, max: 50000, sort: 'date-desc' });
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
-  const [checkout, setCheckout] = useState({ name: '', email: '', phone: '', location: '', paymentMethod: 'Online' });
+  const [checkout, setCheckout] = useState({ name: '', email: '', phone: '', province: '', district: '', municipality: '', ward: '', address: '', paymentMethod: 'Online' });
+  const [locationDropdowns, setLocationDropdowns] = useState({ provinceOpen: false, districtOpen: false, municipalityOpen: false, wardOpen: false });
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [hasOrderStatusUpdate, setHasOrderStatusUpdate] = useState(false);
+  const [historyBadgeCount, setHistoryBadgeCount] = useState(0);
   const knownOrderStatusesRef = useRef<Record<string, Order['status']>>({});
   const drawerX = useRef(new Animated.Value(400)).current;
   const detailFadeAnim = useRef(new Animated.Value(1)).current;
@@ -121,6 +137,17 @@ const StoreScreen = () => {
     }
   }, [auth.user]);
 
+  useEffect(() => {
+    if (params.paymentSuccess === '1') {
+      setCart([]);
+      setCartOpen(false);
+      setCheckoutOpen(false);
+      setSelected(null);
+      setConfirmation(null);
+      fetchOrders(false);
+    }
+  }, [params.paymentSuccess, params.paymentTs]);
+
 
 
   const fetchProducts = async () => {
@@ -146,21 +173,21 @@ const StoreScreen = () => {
         const incomingOrders: Order[] = data.orders || [];
         const nextStatuses: Record<string, Order['status']> = {};
         const hadPreviousSnapshot = Object.keys(knownOrderStatusesRef.current).length > 0;
-        let hasStatusChange = false;
+        let newEntityCount = 0;
 
         incomingOrders.forEach((order) => {
           nextStatuses[order._id] = order.status;
           const previousStatus = knownOrderStatusesRef.current[order._id];
-          if (previousStatus && previousStatus !== order.status) {
-            hasStatusChange = true;
+          if (!previousStatus) {
+            newEntityCount += 1;
           }
         });
 
         knownOrderStatusesRef.current = nextStatuses;
         setOrders(incomingOrders);
 
-        if (hadPreviousSnapshot && hasStatusChange && !orderHistoryOpen) {
-          setHasOrderStatusUpdate(true);
+        if (hadPreviousSnapshot && newEntityCount > 0 && !orderHistoryOpen) {
+          setHistoryBadgeCount((prev) => prev + newEntityCount);
         }
       }
     } catch (e: any) {
@@ -172,7 +199,7 @@ const StoreScreen = () => {
 
   useEffect(() => {
     if (orderHistoryOpen && auth.user) {
-      setHasOrderStatusUpdate(false);
+      setHistoryBadgeCount(0);
       fetchOrders();
     }
   }, [orderHistoryOpen, auth.user]);
@@ -192,6 +219,58 @@ const StoreScreen = () => {
 
   const formatRs = (num: number) => `Rs. ${num.toLocaleString('en-IN')}`;
   const categories = Array.from(new Set(products.map((p) => p.category)));
+
+  const provinces = useMemo(
+    () => Array.from(new Set(NEPAL_WARD_ROWS.map((row) => row.province_en.trim()))).sort((a, b) => a.localeCompare(b)),
+    []
+  );
+
+  const districts = useMemo(() => {
+    if (!checkout.province) return [];
+    return Array.from(
+      new Set(
+        NEPAL_WARD_ROWS
+          .filter((row) => row.province_en.trim() === checkout.province)
+          .map((row) => row.district_en.trim())
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [checkout.province]);
+
+  const municipalities = useMemo(() => {
+    if (!checkout.province || !checkout.district) return [];
+    return Array.from(
+      new Set(
+        NEPAL_WARD_ROWS
+          .filter(
+            (row) =>
+              row.province_en.trim() === checkout.province &&
+              row.district_en.trim() === checkout.district
+          )
+          .map((row) => row.municipality_en.trim())
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [checkout.province, checkout.district]);
+
+  const wards = useMemo(() => {
+    if (!checkout.province || !checkout.district || !checkout.municipality) return [];
+    return Array.from(
+      new Set(
+        NEPAL_WARD_ROWS
+          .filter(
+            (row) =>
+              row.province_en.trim() === checkout.province &&
+              row.district_en.trim() === checkout.district &&
+              row.municipality_en.trim() === checkout.municipality
+          )
+          .map((row) => row.ward_en.trim())
+      )
+    ).sort((a, b) => {
+      const an = Number(a);
+      const bn = Number(b);
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+      return a.localeCompare(b);
+    });
+  }, [checkout.province, checkout.district, checkout.municipality]);
 
   const filtered = useMemo(() => {
     let result = products.filter((p) => (!filters.cats.size || filters.cats.has(p.category)) && (!filters.inStock || p.stock > 0) && p.price >= filters.min && p.price <= filters.max);
@@ -236,7 +315,11 @@ const StoreScreen = () => {
       checkout.name.trim().length > 0 &&
       checkout.email.trim().length > 0 &&
       checkout.phone.trim().length > 0 &&
-      checkout.location.trim().length > 0 &&
+      checkout.province.trim().length > 0 &&
+      checkout.district.trim().length > 0 &&
+      checkout.municipality.trim().length > 0 &&
+      checkout.ward.trim().length > 0 &&
+      checkout.address.trim().length > 0 &&
       checkout.paymentMethod.trim().length > 0 &&
       cart.length > 0,
     [checkout, cart.length]
@@ -255,6 +338,12 @@ const StoreScreen = () => {
 
   const handleRemoveFromCart = (id: string) => {
     setCart(cart.filter((i) => i._id !== id));
+  };
+
+  const handleBuyNow = (product: Product, qty: number) => {
+    handleAddToCart(product, qty);
+    setCartOpen(false);
+    setCheckoutOpen(true);
   };
 
   const placeOrder = async () => {
@@ -277,7 +366,8 @@ const StoreScreen = () => {
           customerName: checkout.name.trim(),
           email: checkout.email.trim(),
           phone: checkout.phone.trim(),
-          location: checkout.location.trim(),
+          location: `Ward ${checkout.ward}, ${checkout.municipality}, ${checkout.district}, ${checkout.province}`,
+          address: checkout.address.trim(),
           products: cart.map((i) => ({ productId: i._id, quantity: i.quantity })),
           returnUrl: `${API_URL}/payment/khalti/redirect?deeplink=${encodeURIComponent(appRedirectUrl)}`,
         }),
@@ -292,6 +382,7 @@ const StoreScreen = () => {
         if (result.type === 'success' && result.url) {
           // Close checkout popup before handling payment callback redirect.
           setCheckoutOpen(false);
+          setCart([]);
           await ExpoLinking.openURL(result.url);
         } else if (result.type === 'cancel' || result.type === 'dismiss') {
           showToast('Payment was cancelled');
@@ -481,7 +572,13 @@ const StoreScreen = () => {
             </View>
             </ScrollView>
 
-            {product.stock > 0 && <QuantityPicker max={product.stock} onAdd={(qty) => handleAddToCart(product, qty)} />}
+            {product.stock > 0 && (
+              <QuantityPicker
+                max={product.stock}
+                onAdd={(qty) => handleAddToCart(product, qty)}
+                onBuyNow={(qty) => handleBuyNow(product, qty)}
+              />
+            )}
             {product.stock === 0 && (
               <TouchableOpacity style={[styles.primaryBtn, styles.disabledBtn]} disabled>
                 <Text style={styles.primaryText}>Out of Stock</Text>
@@ -531,7 +628,7 @@ const StoreScreen = () => {
                       style={styles.qtySmallBtn}
                       onPress={() => setCart(cart.map((i) => (i._id === item._id ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i)))}
                     >
-                      <Text style={styles.qtySmallText}>−</Text>
+                      <Text style={styles.qtySmallText}>âˆ’</Text>
                     </TouchableOpacity>
                     <Text style={styles.qtyValue}>{item.quantity}</Text>
                     <TouchableOpacity
@@ -586,8 +683,132 @@ const StoreScreen = () => {
             <Label text="Phone" />
             <Input placeholder="+977 98..." keyboardType="phone-pad" value={checkout.phone} onChangeText={(v: string) => setCheckout({ ...checkout, phone: v })} />
 
-            <Label text="Location" />
-            <Input placeholder="Enter your city or area..." value={checkout.location} onChangeText={(v: string) => setCheckout({ ...checkout, location: v })} />
+            <Label text="Province" />
+            <TouchableOpacity
+              style={styles.dropdownBtn}
+              onPress={() => setLocationDropdowns({ ...locationDropdowns, provinceOpen: !locationDropdowns.provinceOpen })}
+            >
+              <Text style={[styles.dropdownBtnText, !checkout.province && styles.dropdownPlaceholder]}>
+                {checkout.province || 'Select Province'}
+              </Text>
+              <Ionicons name={locationDropdowns.provinceOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.lightGray} />
+            </TouchableOpacity>
+            {locationDropdowns.provinceOpen && (
+              <ScrollView style={styles.dropdownMenu} nestedScrollEnabled>
+                {provinces.map((province) => (
+                  <TouchableOpacity
+                    key={province}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setCheckout({ ...checkout, province, district: '', municipality: '', ward: '', address: '' });
+                      setLocationDropdowns({ ...locationDropdowns, provinceOpen: false });
+                    }}
+                  >
+                    <Text style={styles.dropdownItemText}>{province}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {checkout.province && (
+              <>
+                <Label text="District" />
+                <TouchableOpacity
+                  style={styles.dropdownBtn}
+                  onPress={() => setLocationDropdowns({ ...locationDropdowns, districtOpen: !locationDropdowns.districtOpen })}
+                >
+                  <Text style={[styles.dropdownBtnText, !checkout.district && styles.dropdownPlaceholder]}>
+                    {checkout.district || 'Select District'}
+                  </Text>
+                  <Ionicons name={locationDropdowns.districtOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.lightGray} />
+                </TouchableOpacity>
+                {locationDropdowns.districtOpen && (
+                  <ScrollView style={styles.dropdownMenu} nestedScrollEnabled>
+                    {districts.map((district) => (
+                      <TouchableOpacity
+                        key={district}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setCheckout({ ...checkout, district, municipality: '', ward: '', address: '' });
+                          setLocationDropdowns({ ...locationDropdowns, districtOpen: false });
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{district}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </>
+            )}
+
+            {checkout.district && (
+              <>
+                <Label text="Municipality" />
+                <TouchableOpacity
+                  style={styles.dropdownBtn}
+                  onPress={() => setLocationDropdowns({ ...locationDropdowns, municipalityOpen: !locationDropdowns.municipalityOpen })}
+                >
+                  <Text style={[styles.dropdownBtnText, !checkout.municipality && styles.dropdownPlaceholder]}>
+                    {checkout.municipality || 'Select Municipality'}
+                  </Text>
+                  <Ionicons name={locationDropdowns.municipalityOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.lightGray} />
+                </TouchableOpacity>
+                {locationDropdowns.municipalityOpen && (
+                  <ScrollView style={styles.dropdownMenu} nestedScrollEnabled>
+                    {municipalities.map((municipality) => (
+                      <TouchableOpacity
+                        key={municipality}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setCheckout({ ...checkout, municipality, ward: '', address: '' });
+                          setLocationDropdowns({ ...locationDropdowns, municipalityOpen: false });
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{municipality}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </>
+            )}
+
+            {checkout.municipality && (
+              <>
+                <Label text="Ward" />
+                <TouchableOpacity
+                  style={styles.dropdownBtn}
+                  onPress={() => setLocationDropdowns({ ...locationDropdowns, wardOpen: !locationDropdowns.wardOpen })}
+                >
+                  <Text style={[styles.dropdownBtnText, !checkout.ward && styles.dropdownPlaceholder]}>
+                    {checkout.ward ? `Ward ${checkout.ward}` : 'Select Ward'}
+                  </Text>
+                  <Ionicons name={locationDropdowns.wardOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.lightGray} />
+                </TouchableOpacity>
+                {locationDropdowns.wardOpen && (
+                  <ScrollView style={styles.dropdownMenu} nestedScrollEnabled>
+                    {wards.map((ward) => (
+                      <TouchableOpacity
+                        key={ward}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setCheckout({ ...checkout, ward });
+                          setLocationDropdowns({ ...locationDropdowns, wardOpen: false });
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{`Ward ${ward}`}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </>
+            )}
+
+            {checkout.ward && (
+              <>
+                <Label text="Address" />
+                <Input placeholder="Enter your street address..." value={checkout.address} onChangeText={(v: string) => setCheckout({ ...checkout, address: v })} />
+              </>
+            )}
 
             <Label text="Payment Method" />
             <View style={styles.paymentOptions}>
@@ -681,7 +902,7 @@ const StoreScreen = () => {
 
                 <View style={styles.orderMeta}>
                   <Text style={styles.orderMetaText}>{order.products.length} item{order.products.length !== 1 ? 's' : ''}</Text>
-                  <Text style={styles.orderMetaText}>•</Text>
+                  <Text style={styles.orderMetaText}>â€¢</Text>
                   <Text style={styles.orderMetaText}>{formatRs(order.orderTotal + order.shippingCost)}</Text>
                 </View>
 
@@ -719,9 +940,13 @@ const StoreScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Supplements</Text>
         <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => { setHasOrderStatusUpdate(false); setOrderHistoryOpen(true); }}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => { setHistoryBadgeCount(0); setOrderHistoryOpen(true); }}>
             <Ionicons name="receipt" size={22} color="#fff" />
-            {hasOrderStatusUpdate && <View style={styles.historyUpdateDot} />}
+            {historyBadgeCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{historyBadgeCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => setCartOpen(true)}>
             <Ionicons name="cart" size={22} color="#fff" />
@@ -875,28 +1100,48 @@ const StoreScreen = () => {
   );
 };
 
-const QuantityPicker = ({ max, onAdd, disabled }: { max: number; onAdd: (qty: number) => void; disabled?: boolean }) => {
+const QuantityPicker = ({
+  max,
+  onAdd,
+  onBuyNow,
+  disabled,
+}: {
+  max: number;
+  onAdd: (qty: number) => void;
+  onBuyNow?: (qty: number) => void;
+  disabled?: boolean;
+}) => {
   const [qty, setQty] = useState(1);
+  const canDecrease = !disabled && qty > 1;
+  const canIncrease = !disabled && qty < (max || 1);
+
   useEffect(() => setQty(1), [max]);
+
   return (
     <View style={styles.qtyPickerContainer}>
+      <Text style={styles.qtyLabel}>Quantity</Text>
       <View style={styles.qtyControls}>
         <TouchableOpacity
-          style={[styles.qtyBtn, disabled && styles.qtyBtnDisabled]}
-          disabled={disabled}
+          style={[styles.qtyBtn, !canDecrease && styles.qtyBtnDisabled]}
+          disabled={!canDecrease}
           onPress={() => setQty(Math.max(1, qty - 1))}
         >
-          <Text style={styles.qtyBtnText}>−</Text>
+          <Ionicons name="remove" size={18} color={canDecrease ? Colors.primary : Colors.darkGray} />
         </TouchableOpacity>
-        <Text style={styles.qtyDisplay}>{qty}</Text>
+
+        <View style={styles.qtyDisplayBox}>
+          <Text style={styles.qtyDisplay}>{qty}</Text>
+        </View>
+
         <TouchableOpacity
-          style={[styles.qtyBtn, disabled && styles.qtyBtnDisabled]}
-          disabled={disabled}
+          style={[styles.qtyBtn, !canIncrease && styles.qtyBtnDisabled]}
+          disabled={!canIncrease}
           onPress={() => setQty(Math.min(max || 1, qty + 1))}
         >
-          <Text style={styles.qtyBtnText}>+</Text>
+          <Ionicons name="add" size={18} color={canIncrease ? Colors.primary : Colors.darkGray} />
         </TouchableOpacity>
       </View>
+
       <TouchableOpacity
         style={[styles.primaryBtn, { marginTop: 12, opacity: disabled ? 0.5 : 1 }]}
         disabled={disabled}
@@ -904,6 +1149,15 @@ const QuantityPicker = ({ max, onAdd, disabled }: { max: number; onAdd: (qty: nu
       >
         <Text style={styles.primaryText}>{disabled ? 'Out of Stock' : 'Add to Cart'}</Text>
       </TouchableOpacity>
+      {!!onBuyNow && (
+        <TouchableOpacity
+          style={[styles.buyNowBtn, { opacity: disabled ? 0.5 : 1 }]}
+          disabled={disabled}
+          onPress={() => onBuyNow(qty)}
+        >
+          <Text style={styles.buyNowText}>{disabled ? 'Out of Stock' : 'Buy Now'}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -937,11 +1191,11 @@ const styles = StyleSheet.create({
   cartBadge: { position: 'absolute', top: -6, right: -6, backgroundColor: Colors.primary, borderRadius: 99, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
   cartBadgeText: { color: '#000', fontWeight: '800', fontSize: 11, fontFamily: 'Poppins' },
   
-  categoryScroll: { marginBottom: 12, flexGrow: 0 },
-  categoryScrollContent: { paddingHorizontal: 20 },
-  filterClearBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: Colors.primary, marginRight: 6 },
+  categoryScroll: { marginBottom: 12, flexGrow: 0, minHeight: 38 },
+  categoryScrollContent: { paddingHorizontal: 20, alignItems: 'center' },
+  filterClearBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 30, paddingHorizontal: 10, borderRadius: 16, borderWidth: 1, borderColor: Colors.primary, marginRight: 6 },
   filterClearText: { color: Colors.primary, fontWeight: '600', fontSize: 11, fontFamily: 'Poppins' },
-  categoryChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#333', marginRight: 6 },
+  categoryChip: { height: 30, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#333', marginRight: 6, justifyContent: 'center', alignItems: 'center' },
   categoryChipActive: { backgroundColor: Colors.primary + '20', borderColor: Colors.primary },
   categoryChipText: { color: '#fff', fontWeight: '600', fontSize: 12, fontFamily: 'Poppins' },
   
@@ -1046,6 +1300,12 @@ const styles = StyleSheet.create({
   checkoutTitle: { color: '#fff', fontSize: 18, fontWeight: '800', fontFamily: 'Poppins' },
   label: { color: Colors.lightGray, fontSize: 12, fontWeight: '700', marginTop: 12, fontFamily: 'Poppins' },
   input: { backgroundColor: '#2b2b2b', color: '#fff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#333', marginTop: 6, fontWeight: '500', fontFamily: 'Poppins' },
+  dropdownBtn: { backgroundColor: '#2b2b2b', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, borderWidth: 1, borderColor: '#333', marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dropdownBtnText: { color: '#fff', fontWeight: '500', fontSize: 14, fontFamily: 'Poppins', flex: 1 },
+  dropdownPlaceholder: { color: Colors.darkGray },
+  dropdownMenu: { backgroundColor: '#1f1f1f', borderRadius: 10, borderWidth: 1, borderColor: '#333', marginTop: 2, maxHeight: 240, zIndex: 1000, elevation: 10 },
+  dropdownItem: { paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#333' },
+  dropdownItemText: { color: '#fff', fontWeight: '500', fontSize: 13, fontFamily: 'Poppins' },
   locationList: { marginTop: 6, backgroundColor: '#2f2f2f', borderRadius: 10, overflow: 'hidden', maxHeight: 150 },
   locationItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#333', gap: 8 },
   locationText: { color: '#fff', fontWeight: '500', flex: 1, fontFamily: 'Poppins' },
@@ -1088,13 +1348,58 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   disabledBtn: { opacity: 0.5 },
   primaryText: { color: '#000', fontWeight: '800', fontSize: 15, fontFamily: 'Poppins' },
+  buyNowBtn: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  buyNowText: {
+    color: '#000',
+    fontWeight: '800',
+    fontSize: 15,
+    fontFamily: 'Poppins',
+  },
   
-  qtyPickerContainer: { paddingHorizontal: 16, paddingVertical: 16 },
-  qtyControls: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  qtyBtn: { width: 40, height: 40, borderRadius: 8, borderWidth: 1, borderColor: '#444', alignItems: 'center', justifyContent: 'center' },
-  qtyBtnDisabled: { opacity: 0.5 },
-  qtyBtnText: { color: '#fff', fontSize: 18, fontWeight: '700', fontFamily: 'Poppins' },
-  qtyDisplay: { color: '#fff', fontSize: 16, fontWeight: '700', flex: 1, textAlign: 'center', fontFamily: 'Poppins' },
+  qtyPickerContainer: { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#333' },
+  qtyLabel: { color: Colors.lightGray, fontSize: 12, fontWeight: '700', marginBottom: 10, letterSpacing: 0.5, fontFamily: 'Poppins' },
+  qtyControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#333',
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    marginBottom: 12,
+  },
+  qtyBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + '15',
+    borderWidth: 2,
+    borderColor: Colors.primary + '40',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyBtnDisabled: { opacity: 0.35, backgroundColor: Colors.darkGray + '20', borderColor: Colors.darkGray + '30' },
+  qtyDisplayBox: {
+    minWidth: 85,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary + '50',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  qtyDisplay: { color: Colors.primary, fontSize: 20, fontWeight: '800', textAlign: 'center', fontFamily: 'Poppins', letterSpacing: -0.5 },
   
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   rowLabel: { color: Colors.lightGray, fontWeight: '600', fontSize: 13, fontFamily: 'Poppins' },

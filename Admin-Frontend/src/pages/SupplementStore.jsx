@@ -375,6 +375,7 @@ const SupplementStore = () => {
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
+                  <th>Location</th>
                   <th>Items</th>
                   <th>Payment</th>
                   <th>Total</th>
@@ -392,6 +393,11 @@ const SupplementStore = () => {
                         <div style={{ fontWeight: 600, marginBottom: '4px' }}>{o.customerName}</div>
                         <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>{o.phone}</div>
                         <div style={{ fontSize: '12px', color: '#666' }}>{o.email}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {o.location || o.address || 'N/A'}
+                        </div>
                       </td>
                       <td>
                         {o.products?.map((p, idx) => (
@@ -423,7 +429,7 @@ const SupplementStore = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6">
+                    <td colSpan="7">
                       <div className="no-data">
                         <p>No orders yet. Start selling your products!</p>
                       </div>

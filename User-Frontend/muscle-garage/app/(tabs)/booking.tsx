@@ -126,29 +126,66 @@ export default function BookingScreen() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError('');
       
       // Fetch trainers and sessions
       try {
-        const [trainersRes, sessionsRes] = await Promise.all([
+        const [trainersResult, sessionsResult] = await Promise.allSettled([
           axios.get(`${API_URL}/trainer/all`),
           axios.get(`${API_URL}/session/all`),
         ]);
 
-        if (trainersRes.data.success) {
-          setTrainers(trainersRes.data.trainers.filter((t: Trainer) => t.isActive));
+        let trainersLoaded = false;
+        let sessionsLoaded = false;
+        let trainerError = '';
+        let sessionError = '';
+
+        if (trainersResult.status === 'fulfilled') {
+          const trainersRes = trainersResult.value;
+          if (trainersRes.data.success) {
+            setTrainers(trainersRes.data.trainers.filter((t: Trainer) => t.isActive));
+            trainersLoaded = true;
+          } else {
+            trainerError = trainersRes.data?.message || 'Failed to fetch trainers';
+            console.error('Trainers response error:', trainersRes.data);
+          }
         } else {
-          console.error('Trainers response error:', trainersRes.data);
+          trainerError = trainersResult.reason?.response?.data?.message || trainersResult.reason?.message || 'Failed to fetch trainers';
+          console.error('Error fetching trainers:', trainersResult.reason);
         }
-        
-        if (sessionsRes.data.success) {
-          // Filter out full sessions
-          setSessions(sessionsRes.data.sessions.filter((s: Session) => s.isActive && !s.isFull));
+
+        if (sessionsResult.status === 'fulfilled') {
+          const sessionsRes = sessionsResult.value;
+          if (sessionsRes.data.success) {
+            // Filter out full sessions
+            setSessions(sessionsRes.data.sessions.filter((s: Session) => s.isActive && !s.isFull));
+            sessionsLoaded = true;
+          } else {
+            sessionError = sessionsRes.data?.message || 'Failed to fetch sessions';
+            console.error('Sessions response error:', sessionsRes.data);
+          }
         } else {
-          console.error('Sessions response error:', sessionsRes.data);
+          sessionError = sessionsResult.reason?.response?.data?.message || sessionsResult.reason?.message || 'Failed to fetch sessions';
+          console.error('Error fetching sessions:', sessionsResult.reason);
         }
+
+        if (!trainersLoaded && !sessionsLoaded) {
+          const combinedError = [trainerError, sessionError].filter(Boolean).join(' | ');
+          setError(`Failed to load booking data: ${combinedError || 'Server error'}`);
+          setLoading(false);
+          return;
+        }
+
+        // If only one endpoint fails, keep page usable and show a non-blocking message.
+        if (!trainersLoaded || !sessionsLoaded) {
+          const partialError = [trainerError, sessionError].filter(Boolean).join(' | ');
+          setError(partialError || 'Some booking data could not be loaded');
+        }
+
       } catch (mainErr: any) {
-        console.error('Error fetching trainers/sessions:', mainErr.message);
-        setError(`Failed to load: ${mainErr.message}`);
+        const detailedMsg = mainErr?.response?.data?.message || mainErr?.message || 'Server error';
+        console.error('Error fetching trainers/sessions:', detailedMsg);
+        setError(`Failed to load booking data: ${detailedMsg}`);
         setLoading(false);
         return;
       }
