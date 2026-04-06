@@ -293,6 +293,9 @@ export default function BookingScreen() {
   const closeTrainerModal = () => {
     setShowTrainerModal(false);
     setSelectedTrainer(null);
+    setShowCertPreview(false);
+    setCertImagePreview(null);
+    setCertImageLoading(false);
   };
 
   const closeSessionModal = () => {
@@ -319,13 +322,10 @@ export default function BookingScreen() {
           return;
         }
 
-        // Avoid stacking modals, which can lock interactions on some devices.
-        setShowTrainerModal(false);
+        // Keep trainer popup open while showing certification preview.
         setCertImageLoading(true);
         setCertImagePreview(certUrl);
-        setTimeout(() => {
-          setShowCertPreview(true);
-        }, 120);
+        setShowCertPreview(true);
       }
     }
   };
@@ -685,6 +685,41 @@ export default function BookingScreen() {
             </View>
             </View>
           </TouchableWithoutFeedback>
+
+          {showCertPreview && (
+            <View style={styles.certInlineOverlay}>
+              <TouchableWithoutFeedback onPress={closeCertPreview}>
+                <View style={styles.certInlineBackdrop} />
+              </TouchableWithoutFeedback>
+              <View style={styles.certPreviewContainer}>
+                <TouchableOpacity
+                  style={styles.certCloseButton}
+                  onPress={closeCertPreview}
+                >
+                  <Ionicons name="close-circle" size={40} color={Colors.primary} />
+                </TouchableOpacity>
+                {certImageLoading && (
+                  <View style={styles.certLoadingOverlay}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                  </View>
+                )}
+                {certImagePreview && typeof certImagePreview === 'string' && certImagePreview.trim() ? (
+                  <Image
+                    source={{ uri: certImagePreview }}
+                    style={styles.certImage}
+                    resizeMode="contain"
+                    onLoadEnd={() => setCertImageLoading(false)}
+                    onError={(error) => {
+                      console.error('Image load error:', error);
+                      setCertImageLoading(false);
+                      setError('Unable to load certification image.');
+                      closeCertPreview();
+                    }}
+                  />
+                ) : null}
+              </View>
+            </View>
+          )}
         </View>
       </Modal>
 
@@ -772,43 +807,6 @@ export default function BookingScreen() {
         </View>
       </Modal>
 
-      {/* Certification Preview Modal */}
-      <Modal
-        visible={showCertPreview}
-        transparent
-        animationType="fade"
-        onRequestClose={closeCertPreview}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.certPreviewContainer}>
-            <TouchableOpacity
-              style={styles.certCloseButton}
-              onPress={closeCertPreview}
-            >
-              <Ionicons name="close-circle" size={40} color={Colors.primary} />
-            </TouchableOpacity>
-            {certImageLoading && (
-              <View style={styles.certLoadingOverlay}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-              </View>
-            )}
-            {certImagePreview && typeof certImagePreview === 'string' && certImagePreview.trim() ? (
-              <Image
-                source={{ uri: certImagePreview }}
-                style={styles.certImage}
-                resizeMode="contain"
-                onLoadEnd={() => setCertImageLoading(false)}
-                onError={(error) => {
-                  console.error('Image load error:', error);
-                  setCertImageLoading(false);
-                  setError('Unable to load certification image.');
-                  closeCertPreview();
-                }}
-              />
-            ) : null}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1149,6 +1147,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
+  },
+  certInlineOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    zIndex: 20,
+  },
+  certInlineBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   certCloseButton: {
     position: 'absolute',
