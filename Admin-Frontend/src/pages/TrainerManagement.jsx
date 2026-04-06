@@ -45,6 +45,7 @@ const TrainerManagement = () => {
   const [trainerForm, setTrainerForm] = useState({
     name: '',
     type: '',
+    description: '',
     experience: '',
     certification: null,
     phone: '',
@@ -60,6 +61,7 @@ const TrainerManagement = () => {
   // Session form state
   const [sessionForm, setSessionForm] = useState({
     type: '',
+    description: '',
     time: '',
     duration: '',
     rate: '',
@@ -204,6 +206,7 @@ const TrainerManagement = () => {
     setTrainerForm({
       name: '',
       type: '',
+      description: '',
       experience: '',
       certification: null,
       phone: '',
@@ -217,6 +220,7 @@ const TrainerManagement = () => {
     });
     setSessionForm({
       type: '',
+      description: '',
       time: '',
       duration: '',
       rate: '',
@@ -321,6 +325,7 @@ const TrainerManagement = () => {
         const formData = new FormData();
         formData.append('name', trainerForm.name);
         formData.append('type', trainerForm.type);
+        formData.append('description', trainerForm.description || '');
         formData.append('experience', trainerForm.experience || 0);
         formData.append('phone', trainerForm.phone);
         formData.append('rate', parseInt(trainerForm.rate, 10));
@@ -364,6 +369,7 @@ const TrainerManagement = () => {
           },
           body: JSON.stringify({
             type: sessionForm.type,
+            description: sessionForm.description || '',
             time: sessionForm.time,
             duration: parseInt(sessionForm.duration),
             rate: parseInt(sessionForm.rate, 10),
@@ -445,6 +451,7 @@ const TrainerManagement = () => {
       setTrainerForm({
         name: item.name || '',
         type: item.type || '',
+        description: item.description || '',
         experience: item.experience || '',
         certification: null,
         phone: item.phone || '',
@@ -465,6 +472,7 @@ const TrainerManagement = () => {
       });
       setSessionForm({
         type: item.type || '',
+        description: item.description || '',
         time: item.time || '',
         duration: item.duration || '',
         rate: item.rate || '',
@@ -494,6 +502,7 @@ const TrainerManagement = () => {
         const formData = new FormData();
         formData.append('name', trainerForm.name);
         formData.append('type', trainerForm.type);
+        formData.append('description', trainerForm.description || '');
         formData.append('experience', trainerForm.experience || 0);
         formData.append('phone', trainerForm.phone);
         formData.append('rate', parseInt(trainerForm.rate, 10));
@@ -534,6 +543,7 @@ const TrainerManagement = () => {
           },
           body: JSON.stringify({
             type: sessionForm.type,
+            description: sessionForm.description || '',
             time: sessionForm.time,
             duration: parseInt(sessionForm.duration),
             rate: parseInt(sessionForm.rate, 10),
@@ -841,6 +851,19 @@ const TrainerManagement = () => {
                     </select>
                   </div>
 
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      className="form-input"
+                      placeholder="Add trainer description"
+                      name="description"
+                      value={trainerForm.description}
+                      onChange={handleTrainerFormChange}
+                      disabled={submitting}
+                      rows={3}
+                    />
+                  </div>
+
                   <div className="form-row">
                     <div className="form-group flex-1">
                       <label>Years of Experience</label>
@@ -958,6 +981,19 @@ const TrainerManagement = () => {
                         <option key={type} value={type}>{type}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      className="form-input"
+                      placeholder="Add session description"
+                      name="description"
+                      value={sessionForm.description}
+                      onChange={handleSessionFormChange}
+                      disabled={submitting}
+                      rows={3}
+                    />
                   </div>
 
                   <div className="form-row">
@@ -1130,6 +1166,19 @@ const TrainerManagement = () => {
                     </select>
                   </div>
 
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      className="form-input"
+                      placeholder="Add trainer description"
+                      name="description"
+                      value={trainerForm.description}
+                      onChange={handleTrainerFormChange}
+                      disabled={editSubmitting}
+                      rows={3}
+                    />
+                  </div>
+
                   <div className="form-row">
                     <div className="form-group flex-1">
                       <label>Years of Experience</label>
@@ -1275,6 +1324,19 @@ const TrainerManagement = () => {
                         <option key={type} value={type}>{type}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      className="form-input"
+                      placeholder="Add session description"
+                      name="description"
+                      value={sessionForm.description}
+                      onChange={handleSessionFormChange}
+                      disabled={editSubmitting}
+                      rows={3}
+                    />
                   </div>
 
                   <div className="form-row">

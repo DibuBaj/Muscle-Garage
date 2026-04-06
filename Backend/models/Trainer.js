@@ -22,6 +22,13 @@ const trainerSchema = new mongoose.Schema({
       'Group Fitness'
     ]
   },
+  description: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 1000,
+    default: ''
+  },
   experience: {
     type: Number,
     required: false,

@@ -17,6 +17,13 @@ const workoutSessionSchema = new mongoose.Schema({
       'Group Fitness'
     ]
   },
+  description: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 1000,
+    default: ''
+  },
   time: {
     type: String,
     required: true,

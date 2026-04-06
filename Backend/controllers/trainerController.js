@@ -46,7 +46,8 @@ exports.getTrainerById = async (req, res) => {
 // Create trainer
 exports.createTrainer = async (req, res) => {
   try {
-    const { name, type, experience, phone, rate } = req.body;
+    const { name, type, description, experience, phone, rate } = req.body;
+    const rawDescription = req.body.description ?? req.body.desc ?? req.body.trainerDescription ?? description ?? '';
     // Handle social media fields from FormData
     // Try multiple patterns since FormData with bracket notation can vary
     let instagram = req.body['socialMedia[instagram]'] || req.body.instagram || '';
@@ -108,6 +109,7 @@ exports.createTrainer = async (req, res) => {
     const trainer = new Trainer({
       name,
       type,
+      description: String(rawDescription).trim(),
       experience: experience || 0,
       certification: certificationData,
       phone,
@@ -144,7 +146,12 @@ exports.createTrainer = async (req, res) => {
 exports.updateTrainer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, type, experience, phone, rate, isActive } = req.body;
+    const { name, type, description, experience, phone, rate, isActive } = req.body;
+    const hasDescriptionKey =
+      Object.prototype.hasOwnProperty.call(req.body, 'description') ||
+      Object.prototype.hasOwnProperty.call(req.body, 'desc') ||
+      Object.prototype.hasOwnProperty.call(req.body, 'trainerDescription');
+    const rawDescription = req.body.description ?? req.body.desc ?? req.body.trainerDescription ?? description;
     // Handle social media fields from FormData
     let instagram = req.body['socialMedia[instagram]'] || req.body.instagram || '';
     let facebook = req.body['socialMedia[facebook]'] || req.body.facebook || '';
@@ -216,6 +223,9 @@ exports.updateTrainer = async (req, res) => {
 
     trainer.name = name;
     trainer.type = type;
+    if (hasDescriptionKey) {
+      trainer.description = String(rawDescription || '').trim();
+    }
     trainer.experience = experience || 0;
     trainer.phone = phone;
     trainer.socialMedia = {

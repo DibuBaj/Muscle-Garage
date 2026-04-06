@@ -1,8 +1,8 @@
-import { useRouter } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Icon, Label, NativeTabs, VectorIcon } from 'expo-router/unstable-native-tabs';
 import React, { useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/context/AuthContext';
 
@@ -29,6 +29,65 @@ export default function TabLayout() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
+    );
+  }
+
+  if (Platform.OS !== 'ios') {
+    return (
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: Colors.primary,
+          tabBarInactiveTintColor: Colors.lightGray,
+          tabBarStyle: {
+            backgroundColor: Colors.cardBackground,
+            borderTopColor: 'rgba(255,255,255,0.08)',
+            height: 66,
+            paddingTop: 6,
+            paddingBottom: 8,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '600',
+          },
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="membership"
+          options={{
+            title: 'Plans',
+            tabBarIcon: ({ color, size }) => <Ionicons name="card" size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="store"
+          options={{
+            title: 'Store',
+            tabBarIcon: ({ color, size }) => <Ionicons name="bag" size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="booking"
+          options={{
+            title: 'Booking',
+            tabBarIcon: ({ color, size }) => <Ionicons name="book" size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+          }}
+        />
+      </Tabs>
     );
   }
 

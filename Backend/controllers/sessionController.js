@@ -62,7 +62,7 @@ exports.getSessionById = async (req, res) => {
 // Create workout session
 exports.createSession = async (req, res) => {
   try {
-    const { type, time, duration, rate, maxCapacity, dayOfWeek, phone } = req.body;
+    const { type, description, time, duration, rate, maxCapacity, dayOfWeek, phone } = req.body;
 
     // Validate required fields
     if (!type || !time || !duration || rate === undefined) {
@@ -74,6 +74,7 @@ exports.createSession = async (req, res) => {
 
     const session = new WorkoutSession({
       type,
+      description: (description || '').trim(),
       time,
       duration,
       rate: parseInt(rate, 10),
@@ -103,7 +104,7 @@ exports.createSession = async (req, res) => {
 exports.updateSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, time, duration, rate, maxCapacity, dayOfWeek, phone, isActive } = req.body;
+    const { type, description, time, duration, rate, maxCapacity, dayOfWeek, phone, isActive } = req.body;
 
     // Validate required fields
     if (!type || !time || !duration || rate === undefined) {
@@ -122,6 +123,7 @@ exports.updateSession = async (req, res) => {
     }
 
     session.type = type;
+    session.description = (description || '').trim();
     session.time = time;
     session.duration = duration;
     session.rate = parseInt(rate, 10);

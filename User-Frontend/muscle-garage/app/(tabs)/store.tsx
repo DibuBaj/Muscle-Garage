@@ -947,7 +947,6 @@ const StoreScreen = () => {
 
                 <View style={styles.orderMeta}>
                   <Text style={styles.orderMetaText}>{order.products.length} item{order.products.length !== 1 ? 's' : ''}</Text>
-                  <Text style={styles.orderMetaText}>â€¢</Text>
                   <Text style={styles.orderMetaText}>{formatRs(order.orderTotal + order.shippingCost)}</Text>
                 </View>
 

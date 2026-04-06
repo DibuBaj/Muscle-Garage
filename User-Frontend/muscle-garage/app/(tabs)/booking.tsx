@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
   Modal,
   ActivityIndicator,
@@ -26,6 +27,10 @@ interface Trainer {
   _id: string;
   name: string;
   type: string;
+  description?: string;
+  bio?: string;
+  about?: string;
+  trainerDescription?: string;
   experience: number;
   rate: number;
   phone: string;
@@ -42,6 +47,7 @@ interface Trainer {
 interface Session {
   _id: string;
   type: string;
+  description?: string;
   time: string;
   duration: number;
   rate: number;
@@ -78,10 +84,30 @@ export default function BookingScreen() {
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [certImagePreview, setCertImagePreview] = useState<string | null>(null);
+  const [certImageLoading, setCertImageLoading] = useState(false);
   const [showTrainerModal, setShowTrainerModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showCertPreview, setShowCertPreview] = useState(false);
   const scrollHandler = useLiquidTabBarScrollHandler();
+
+  const getTrainerDescription = (trainer?: Trainer | null) => {
+    if (!trainer) return 'No description available for this trainer.';
+    const description = (trainer.description || trainer.trainerDescription || trainer.bio || trainer.about || '').trim();
+    return description || 'No description available for this trainer.';
+  };
+
+  const resolveCertificateUrl = (certPath: string) => {
+    const normalizedPath = certPath.trim().replace(/\\/g, '/').replace(/^\/+/, '');
+    if (/^https?:\/\//i.test(normalizedPath)) {
+      return normalizedPath;
+    }
+    return `${API_URL}/${normalizedPath}`;
+  };
+
+  const isLikelyImageUrl = (url: string) => {
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    return /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/.test(cleanUrl);
+  };
 
   useEffect(() => {
     fetchData();
@@ -145,7 +171,13 @@ export default function BookingScreen() {
         if (trainersResult.status === 'fulfilled') {
           const trainersRes = trainersResult.value;
           if (trainersRes.data.success) {
-            setTrainers(trainersRes.data.trainers.filter((t: Trainer) => t.isActive));
+            const normalizedTrainers: Trainer[] = trainersRes.data.trainers
+              .filter((t: Trainer) => t.isActive)
+              .map((t: any) => ({
+                ...t,
+                description: (t.description || t.trainerDescription || t.bio || t.about || '').trim(),
+              }));
+            setTrainers(normalizedTrainers);
             trainersLoaded = true;
           } else {
             trainerError = trainersRes.data?.message || 'Failed to fetch trainers';
@@ -258,16 +290,50 @@ export default function BookingScreen() {
     setShowSessionModal(true);
   };
 
-  const handleViewCertification = () => {
+  const closeTrainerModal = () => {
+    setShowTrainerModal(false);
+    setSelectedTrainer(null);
+  };
+
+  const closeSessionModal = () => {
+    setShowSessionModal(false);
+    setSelectedSession(null);
+  };
+
+  const handleViewCertification = async () => {
     if (selectedTrainer?.certification) {
       const certPath = typeof selectedTrainer.certification === 'string' 
         ? selectedTrainer.certification 
         : selectedTrainer.certification?.url || selectedTrainer.certification?.path || '';
       if (certPath) {
-        setCertImagePreview(certPath);
-        setShowCertPreview(true);
+        const certUrl = resolveCertificateUrl(certPath);
+
+        // If certificate is not an image (e.g., PDF), open it externally.
+        if (!isLikelyImageUrl(certUrl)) {
+          try {
+            await Linking.openURL(certUrl);
+          } catch (openErr) {
+            console.error('Error opening certificate URL:', openErr);
+            setError('Unable to open certification file.');
+          }
+          return;
+        }
+
+        // Avoid stacking modals, which can lock interactions on some devices.
+        setShowTrainerModal(false);
+        setCertImageLoading(true);
+        setCertImagePreview(certUrl);
+        setTimeout(() => {
+          setShowCertPreview(true);
+        }, 120);
       }
     }
+  };
+
+  const closeCertPreview = () => {
+    setShowCertPreview(false);
+    setCertImagePreview(null);
+    setCertImageLoading(false);
   };
 
   const handleSocialMediaClick = async (url: string) => {
@@ -507,14 +573,23 @@ export default function BookingScreen() {
       </Animated.ScrollView>
 
       {/* Trainer Detail Modal */}
-      <Modal visible={showTrainerModal} transparent animationType="fade">
+      <Modal
+        visible={showTrainerModal}
+        transparent
+        animationType="fade"
+        onRequestClose={closeTrainerModal}
+      >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <TouchableWithoutFeedback onPress={closeTrainerModal}>
+            <View style={styles.modalBackdrop} />
+          </TouchableWithoutFeedback>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.modalContent}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Trainer Details</Text>
               <TouchableOpacity
-                onPress={() => setShowTrainerModal(false)}
+                onPress={closeTrainerModal}
                 style={styles.closeButton}
               >
                 <Ionicons name="close" size={24} color={Colors.white} />
@@ -533,6 +608,11 @@ export default function BookingScreen() {
                   <View style={styles.detailSection}>
                     <Text style={styles.detailLabel}>Specialization</Text>
                     <Text style={styles.detailValue}>{selectedTrainer.type}</Text>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Description</Text>
+                    <Text style={styles.detailValue}>{getTrainerDescription(selectedTrainer)}</Text>
                   </View>
 
                   <View style={styles.detailSection}>
@@ -593,7 +673,7 @@ export default function BookingScreen() {
             <View style={styles.modalFooter}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => setShowTrainerModal(false)}
+                onPress={closeTrainerModal}
               >
                 <Text style={styles.cancelButtonText}>Close</Text>
               </TouchableOpacity>
@@ -603,19 +683,29 @@ export default function BookingScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
       </Modal>
 
       {/* Session Detail Modal */}
-      <Modal visible={showSessionModal} transparent animationType="fade">
+      <Modal
+        visible={showSessionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={closeSessionModal}
+      >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <TouchableWithoutFeedback onPress={closeSessionModal}>
+            <View style={styles.modalBackdrop} />
+          </TouchableWithoutFeedback>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.modalContent}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Session Details</Text>
               <TouchableOpacity
-                onPress={() => setShowSessionModal(false)}
+                onPress={closeSessionModal}
                 style={styles.closeButton}
               >
                 <Ionicons name="close" size={24} color={Colors.white} />
@@ -630,6 +720,13 @@ export default function BookingScreen() {
                     <Text style={styles.detailLabel}>Type</Text>
                     <Text style={styles.detailValue}>{selectedSession.type}</Text>
                   </View>
+
+                  {selectedSession.description ? (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailLabel}>Description</Text>
+                      <Text style={styles.detailValue}>{selectedSession.description}</Text>
+                    </View>
+                  ) : null}
 
                   <View style={styles.detailSection}>
                     <Text style={styles.detailLabel}>Time</Text>
@@ -660,7 +757,7 @@ export default function BookingScreen() {
             <View style={styles.modalFooter}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => setShowSessionModal(false)}
+                onPress={closeSessionModal}
               >
                 <Text style={styles.cancelButtonText}>Close</Text>
               </TouchableOpacity>
@@ -670,30 +767,42 @@ export default function BookingScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
       </Modal>
 
       {/* Certification Preview Modal */}
-      <Modal visible={showCertPreview} transparent animationType="fade">
+      <Modal
+        visible={showCertPreview}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCertPreview}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.certPreviewContainer}>
             <TouchableOpacity
               style={styles.certCloseButton}
-              onPress={() => setShowCertPreview(false)}
+              onPress={closeCertPreview}
             >
               <Ionicons name="close-circle" size={40} color={Colors.primary} />
             </TouchableOpacity>
+            {certImageLoading && (
+              <View style={styles.certLoadingOverlay}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+              </View>
+            )}
             {certImagePreview && typeof certImagePreview === 'string' && certImagePreview.trim() ? (
               <Image
-                source={{ 
-                  uri: certImagePreview.startsWith('http') ? certImagePreview : `${API_URL}/${certImagePreview}`
-                }}
+                source={{ uri: certImagePreview }}
                 style={styles.certImage}
                 resizeMode="contain"
+                onLoadEnd={() => setCertImageLoading(false)}
                 onError={(error) => {
                   console.error('Image load error:', error);
-                  setShowCertPreview(false);
+                  setCertImageLoading(false);
+                  setError('Unable to load certification image.');
+                  closeCertPreview();
                 }}
               />
             ) : null}
@@ -854,6 +963,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalContent: {
     backgroundColor: Colors.cardBackground,
@@ -1047,6 +1159,17 @@ const styles = StyleSheet.create({
   certImage: {
     width: '90%',
     height: '80%',
+    borderRadius: 12,
+  },
+  certLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: 12,
   },
   noCertText: {
