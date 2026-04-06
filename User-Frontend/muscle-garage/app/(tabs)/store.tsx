@@ -93,6 +93,7 @@ const StoreScreen = () => {
   const drawerX = useRef(new Animated.Value(400)).current;
   const detailFadeAnim = useRef(new Animated.Value(1)).current;
   const SHIPPING = 100;
+  const sanitizePhone = (value: string) => value.replace(/\D/g, '');
 
   // Reset selected image when product changes
   useEffect(() => {
@@ -133,7 +134,7 @@ const StoreScreen = () => {
         ...prev,
         name: auth.user?.fullname || '',
         email: auth.user?.email || '',
-        phone: auth.user?.phone || '',
+        phone: sanitizePhone(auth.user?.phone || ''),
       }));
     }
   }, [auth.user]);
@@ -324,7 +325,7 @@ const StoreScreen = () => {
     () =>
       checkout.name.trim().length > 0 &&
       checkout.email.trim().length > 0 &&
-      checkout.phone.trim().length > 0 &&
+      /^\d+$/.test(checkout.phone.trim()) &&
       checkout.province.trim().length > 0 &&
       checkout.district.trim().length > 0 &&
       checkout.municipality.trim().length > 0 &&
@@ -334,6 +335,14 @@ const StoreScreen = () => {
       cart.length > 0,
     [checkout, cart.length]
   );
+
+  const handleCheckoutPhoneChange = (value: string) => {
+    if (/\D/.test(value)) {
+      showToast('Phone must contain numbers only');
+      return;
+    }
+    setCheckout((prev) => ({ ...prev, phone: value }));
+  };
 
   const handleAddToCart = (product: Product, qty: number) => {
     const existing = cart.find((i) => i._id === product._id);
@@ -361,6 +370,12 @@ const StoreScreen = () => {
       showToast('Please fill all fields');
       return;
     }
+
+    if (!/^\d+$/.test(checkout.phone.trim())) {
+      showToast('Phone must contain numbers only');
+      return;
+    }
+
     if (cart.length === 0) {
       showToast('Cart is empty');
       return;
@@ -603,7 +618,6 @@ const StoreScreen = () => {
               <Text style={styles.detailDescLabel}>Description</Text>
               <Text style={styles.detailDesc}>{product.description}</Text>
             </View>
-            </ScrollView>
 
             {product.stock > 0 && (
               <QuantityPicker
@@ -613,10 +627,11 @@ const StoreScreen = () => {
               />
             )}
             {product.stock === 0 && (
-              <TouchableOpacity style={[styles.primaryBtn, styles.disabledBtn]} disabled>
+              <TouchableOpacity style={[styles.primaryBtn, styles.disabledBtn, styles.outOfStockInlineBtn]} disabled>
                 <Text style={styles.primaryText}>Out of Stock</Text>
               </TouchableOpacity>
             )}
+            </ScrollView>
           </View>
         </SafeAreaView>
     </Modal>
@@ -714,7 +729,7 @@ const StoreScreen = () => {
             <Input placeholder="john@example.com" keyboardType="email-address" value={checkout.email} onChangeText={(v: string) => setCheckout({ ...checkout, email: v })} />
 
             <Label text="Phone" />
-            <Input placeholder="+977 98..." keyboardType="phone-pad" value={checkout.phone} onChangeText={(v: string) => setCheckout({ ...checkout, phone: v })} />
+            <Input placeholder="98..." keyboardType="number-pad" value={checkout.phone} onChangeText={handleCheckoutPhoneChange} />
 
             <Label text="Province" />
             <TouchableOpacity
@@ -1229,8 +1244,8 @@ const Input = (props: any) => (
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: Colors.background, paddingTop: 30, fontFamily: 'Poppins' },
   container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 14, paddingTop: 30, fontFamily: 'Poppins' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#222' },
-  title: { color: '#fff', fontSize: 28, fontWeight: '800', letterSpacing: -0.5, fontFamily: 'Poppins' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 16, paddingBottom: 12, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#222' },
+  title: { color: '#fff', fontSize: 24, fontWeight: '800', letterSpacing: -0.5, fontFamily: 'Poppins' },
   headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: { padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#333', position: 'relative' },
   historyUpdateDot: { position: 'absolute', top: 4, right: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ff9800', borderWidth: 1, borderColor: '#111' },
@@ -1446,6 +1461,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   qtyDisplay: { color: Colors.primary, fontSize: 20, fontWeight: '800', textAlign: 'center', fontFamily: 'Poppins', letterSpacing: -0.5 },
+  outOfStockInlineBtn: { marginTop: 12 },
   
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   rowLabel: { color: Colors.lightGray, fontWeight: '600', fontSize: 13, fontFamily: 'Poppins' },

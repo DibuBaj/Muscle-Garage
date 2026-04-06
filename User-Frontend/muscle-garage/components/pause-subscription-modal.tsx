@@ -4,17 +4,16 @@ import {
   Text,
   StyleSheet,
   Modal,
-  Platform,
+  ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import { API_URL } from '@/constants/api';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassModal } from '@/components/ios/GlassModal';
 
 interface PauseSubscriptionModalProps {
   visible: boolean;
@@ -133,295 +132,289 @@ export default function PauseSubscriptionModal({
       day: 'numeric' 
     });
   };
-
-  const modalBody = (
-    <View style={styles.modalContent}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Pause Subscription</Text>
-        <TouchableOpacity onPress={onClose} disabled={loading}>
-          <Ionicons name="close-circle" size={28} color={Colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.infoBox}>
-        <Text style={styles.infoText}>
-          ⏸️ You can pause your subscription for 1 to 7 days. This option can be used once per month. Your subscription end date will be extended by the pause duration. If you resume early, unused pause days will be removed from your end date. For pauses longer than 7 days, please contact Muscle Garage administration.
-        </Text>
-      </View>
-
-      <View style={styles.dateSection}>
-        <Text style={styles.label}>Pause Start Date</Text>
-        <TouchableOpacity
-          style={styles.dateButton}
-          onPress={() => setShowStartDatePicker(true)}
-          disabled={loading}
-        >
-          <Ionicons name="calendar" size={20} color={Colors.primary} />
-          <Text style={styles.dateButtonText}>{formatDate(startDate)}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {showStartDatePicker && (
-        <DateTimePicker
-          value={startDate}
-          mode="date"
-          display="spinner"
-          onChange={handleStartDateChange}
-          minimumDate={new Date()}
-        />
-      )}
-
-      <View style={styles.dateSection}>
-        <Text style={styles.label}>Pause End Date</Text>
-        <TouchableOpacity
-          style={styles.dateButton}
-          onPress={() => setShowEndDatePicker(true)}
-          disabled={loading}
-        >
-          <Ionicons name="calendar" size={20} color={Colors.primary} />
-          <Text style={styles.dateButtonText}>{formatDate(endDate)}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {showEndDatePicker && (
-        <DateTimePicker
-          value={endDate}
-          mode="date"
-          display="spinner"
-          onChange={handleEndDateChange}
-          minimumDate={new Date(startDate.getTime() + 24 * 60 * 60 * 1000)}
-        />
-      )}
-
-      <View style={styles.durationInfo}>
-        <Text style={[styles.durationText, isValidDuration && styles.durationTextValid]}>
-          Duration: {daysDiff} day{daysDiff !== 1 ? 's' : ''}
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.pauseButton, (!isValidDuration || loading) && styles.pauseButtonDisabled]}
-        onPress={handlePauseSubscription}
-        disabled={!isValidDuration || loading}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color={Colors.white} />
-        ) : (
-          <Text style={styles.pauseButtonText}>Pause Subscription</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.cancelButton}
-        onPress={onClose}
-        disabled={loading}
-      >
-        <Text style={styles.cancelButtonText}>Cancel</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const iosModal = (
-    <>
-      {successMessage ? (
-        <View style={styles.successNotification}>
-          <View style={styles.notificationContent}>
-            <Ionicons name="checkmark-circle" size={24} color={Colors.success} style={styles.notificationIcon} />
-            <Text style={styles.notificationText}>{successMessage}</Text>
-          </View>
-        </View>
-      ) : null}
-
-      {errorMessage ? (
-        <View style={styles.errorNotification}>
-          <View style={styles.notificationContent}>
-            <Ionicons name="alert-circle" size={24} color={Colors.error} style={styles.notificationIcon} />
-            <Text style={styles.notificationText}>{errorMessage}</Text>
-          </View>
-        </View>
-      ) : null}
-      <GlassModal visible={visible} onClose={onClose} style={styles.iosSheet}>
-        {modalBody}
-      </GlassModal>
-    </>
-  );
-
-  const androidModal = (
+  return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
-      {successMessage ? (
-        <View style={styles.successNotification}>
-          <View style={styles.notificationContent}>
-            <Ionicons name="checkmark-circle" size={24} color={Colors.success} style={styles.notificationIcon} />
-            <Text style={styles.notificationText}>{successMessage}</Text>
-          </View>
-        </View>
-      ) : null}
+      <View style={styles.modalOverlay}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.modalBackdrop} />
+        </TouchableWithoutFeedback>
 
-      {errorMessage ? (
-        <View style={styles.errorNotification}>
-          <View style={styles.notificationContent}>
-            <Ionicons name="alert-circle" size={24} color={Colors.error} style={styles.notificationIcon} />
-            <Text style={styles.notificationText}>{errorMessage}</Text>
-          </View>
-        </View>
-      ) : null}
+        <TouchableWithoutFeedback onPress={() => {}}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pause Subscription</Text>
+              <TouchableOpacity onPress={onClose} disabled={loading} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={Colors.white} />
+              </TouchableOpacity>
+            </View>
 
-      <View style={styles.overlay}>{modalBody}</View>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {!!successMessage && (
+                <View style={styles.successBanner}>
+                  <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                  <Text style={styles.bannerText}>{successMessage}</Text>
+                </View>
+              )}
+
+              {!!errorMessage && (
+                <View style={styles.errorBanner}>
+                  <Ionicons name="alert-circle" size={20} color={Colors.error} />
+                  <Text style={styles.bannerText}>{errorMessage}</Text>
+                </View>
+              )}
+
+              <View style={styles.infoBox}>
+                <Text style={styles.infoText}>
+                  Pause for 1 to 7 days, once per month. Your end date extends by the paused duration.
+                </Text>
+              </View>
+
+              <View style={styles.dateSection}>
+                <Text style={styles.label}>Pause Start Date</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setShowStartDatePicker(true)}
+                  disabled={loading}
+                >
+                  <Ionicons name="calendar" size={20} color={Colors.primary} />
+                  <Text style={styles.dateButtonText}>{formatDate(startDate)}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {showStartDatePicker && (
+                <DateTimePicker
+                  value={startDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleStartDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
+
+              <View style={styles.dateSection}>
+                <Text style={styles.label}>Pause End Date</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setShowEndDatePicker(true)}
+                  disabled={loading}
+                >
+                  <Ionicons name="calendar" size={20} color={Colors.primary} />
+                  <Text style={styles.dateButtonText}>{formatDate(endDate)}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {showEndDatePicker && (
+                <DateTimePicker
+                  value={endDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleEndDateChange}
+                  minimumDate={new Date(startDate.getTime() + 24 * 60 * 60 * 1000)}
+                />
+              )}
+
+              <View style={styles.durationInfo}>
+                <Text style={[styles.durationText, isValidDuration && styles.durationTextValid]}>
+                  Duration: {daysDiff} day{daysDiff !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={onClose}
+                disabled={loading}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.pauseButton, (!isValidDuration || loading) && styles.pauseButtonDisabled]}
+                onPress={handlePauseSubscription}
+                disabled={!isValidDuration || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.pauseButtonText}>Pause</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
-
-  return Platform.OS === 'ios' ? iosModal : androidModal;
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
-  header: {
+  modalContent: {
+    backgroundColor: Colors.cardBackground,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: Colors.white,
+    fontFamily: 'Poppins',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    maxHeight: 460,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(40, 167, 69, 0.12)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.success,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(196, 23, 23, 0.12)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.error,
+  },
+  bannerText: {
+    color: Colors.white,
+    fontSize: 13,
+    flex: 1,
+    fontFamily: 'Poppins',
   },
   infoBox: {
     backgroundColor: 'rgba(229, 122, 37, 0.1)',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    padding: 14,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: 'rgba(229, 122, 37, 0.3)',
   },
   infoText: {
     color: Colors.white,
     fontSize: 13,
     lineHeight: 20,
+    fontFamily: 'Poppins',
   },
   dateSection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.white,
-    marginBottom: 8,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    fontFamily: 'Poppins',
   },
   dateButton: {
     backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#333333',
-    gap: 12,
+    gap: 10,
   },
   dateButtonText: {
     color: Colors.white,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    fontFamily: 'Poppins',
   },
   durationInfo: {
     backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#333333',
   },
   durationText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.error,
+    fontFamily: 'Poppins',
   },
   durationTextValid: {
     color: Colors.success,
   },
   pauseButton: {
+    flex: 1,
     backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 8,
+    paddingVertical: 12,
     alignItems: 'center',
-    marginBottom: 12,
   },
   pauseButtonDisabled: {
     opacity: 0.6,
   },
   pauseButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '700',
     color: Colors.white,
+    fontFamily: 'Poppins',
   },
   cancelButton: {
-    paddingVertical: 14,
+    flex: 1,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333333',
+    borderRadius: 8,
+    backgroundColor: '#333333',
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.lightGray,
-  },
-  successNotification: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    backgroundColor: 'rgba(40, 167, 69, 0.95)',
-    paddingTop: 12,
-    paddingBottom: 12,
-    paddingHorizontal: 20,
-  },
-  errorNotification: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    backgroundColor: 'rgba(196, 23, 23, 0.95)',
-    paddingTop: 12,
-    paddingBottom: 12,
-    paddingHorizontal: 20,
-  },
-  notificationContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationIcon: {
-    marginRight: 12,
-  },
-  notificationText: {
-    color: Colors.white,
     fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
-  },
-  iosSheet: {
-    paddingTop: 0,
+    fontWeight: '700',
+    color: Colors.lightGray,
+    fontFamily: 'Poppins',
   },
 });

@@ -71,6 +71,17 @@ export default function SettingsScreen() {
   });
   const scrollHandler = useLiquidTabBarScrollHandler();
 
+  const sanitizePhone = (value: string) => value.replace(/\D/g, '');
+
+  const handlePhoneChange = (text: string) => {
+    if (/\D/.test(text)) {
+      setErrorMessage('Phone must contain numbers only');
+      setTimeout(() => setErrorMessage(''), 2000);
+      return;
+    }
+    setFormData({ ...formData, phone: text });
+  };
+
   useEffect(() => {
     fetchUserProfile();
     requestImagePermissions();
@@ -132,8 +143,16 @@ export default function SettingsScreen() {
   };
 
   const handleUpdateProfile = async () => {
-    if (!formData.fullname || !formData.email || !formData.phone || !formData.username) {
+    const sanitizedPhone = sanitizePhone(formData.phone || '');
+
+    if (!formData.fullname || !formData.email || !sanitizedPhone || !formData.username) {
       setErrorMessage('Please fill in all required fields');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+
+    if (!/^\d+$/.test(formData.phone || '')) {
+      setErrorMessage('Phone must contain numbers only');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
@@ -145,7 +164,7 @@ export default function SettingsScreen() {
         {
           fullname: formData.fullname,
           email: formData.email,
-          phone: formData.phone,
+          phone: sanitizedPhone,
           username: formData.username,
           age: formData.age,
           weight: formData.weight,
@@ -551,9 +570,8 @@ export default function SettingsScreen() {
                   <TextInput
                     style={styles.input}
                     value={formData.phone}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, phone: text })
-                    }
+                    onChangeText={handlePhoneChange}
+                    keyboardType="number-pad"
                     placeholderTextColor={Colors.darkGray}
                   />
                 </View>
