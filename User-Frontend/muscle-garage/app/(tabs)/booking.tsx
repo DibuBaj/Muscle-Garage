@@ -265,6 +265,11 @@ export default function BookingScreen() {
         );
 
         if (result.type === 'success' && result.url) {
+          // Ensure detail popups are closed when returning after successful payment.
+          setShowTrainerModal(false);
+          setShowSessionModal(false);
+          setSelectedTrainer(null);
+          setSelectedSession(null);
           await ExpoLinking.openURL(result.url);
         } else if (result.type === 'cancel' || result.type === 'dismiss') {
           setError('Payment was cancelled.');

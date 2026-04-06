@@ -290,6 +290,8 @@ const StoreScreen = () => {
         );
 
         if (result.type === 'success' && result.url) {
+          // Close checkout popup before handling payment callback redirect.
+          setCheckoutOpen(false);
           await ExpoLinking.openURL(result.url);
         } else if (result.type === 'cancel' || result.type === 'dismiss') {
           showToast('Payment was cancelled');

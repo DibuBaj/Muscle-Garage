@@ -1,40 +1,90 @@
-import { Platform } from 'react-native';
+import axios from 'axios';
+import { NativeModules, Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+const DEFAULT_PORT = '5000';
+const EXPO_TUNNEL_HOST_PATTERNS = ['.expo.dev', '.exp.direct', '.exp.host'];
+
+const sanitizeApiUrl = (url: string) => url.trim().replace(/\/$/, '');
+
+const extractHost = (hostUri?: string | null) => {
+  if (!hostUri) return null;
+
+  const withoutProtocol = hostUri.replace(/^https?:\/\//, '');
+  const hostPart = withoutProtocol.split('/')[0]?.split(':')[0] ?? null;
+  return hostPart?.trim() || null;
+};
+
+const isLikelyTunnelHost = (host: string) =>
+  EXPO_TUNNEL_HOST_PATTERNS.some((pattern) => host.toLowerCase().includes(pattern));
+
+const buildApiUrl = (host: string, port = DEFAULT_PORT) => `http://${host}:${port}/api`;
+
+const getExpoHostCandidates = () => {
+  const expoConfigHost = extractHost(Constants.expoConfig?.hostUri as string | undefined);
+
+  const manifestHost = extractHost(
+    (Constants.manifest as { debuggerHost?: string } | null | undefined)?.debuggerHost
+  );
+
+  const manifest2Host = extractHost(
+    (
+      Constants.manifest2 as
+        | {
+            extra?: {
+              expoClient?: {
+                hostUri?: string;
+              };
+            };
+          }
+        | null
+        | undefined
+    )?.extra?.expoClient?.hostUri
+  );
+
+  const scriptHost = extractHost(
+    (
+      NativeModules.SourceCode as
+        | {
+            scriptURL?: string;
+          }
+        | undefined
+    )?.scriptURL
+  );
+
+  return [expoConfigHost, manifestHost, manifest2Host, scriptHost].filter(
+    (host): host is string => !!host
+  );
+};
+
 const getApiUrl = () => {
-  // 1. PRIORITY: Environmental variable (set in .env file)
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) {
-    console.log('🔌 Using API URL from .env:', envUrl);
-    return envUrl;
+    const sanitized = sanitizeApiUrl(envUrl);
+    console.log('[api] Using API URL from EXPO_PUBLIC_API_URL:', sanitized);
+    return sanitized;
   }
 
-  // 2. For web (browser testing)
   if (Platform.OS === 'web') {
-    console.log('🔌 Using web localhost');
-    return 'http://localhost:5000/api';
+    return buildApiUrl('localhost');
   }
 
-  // 3. Auto-detect from Expo host (works for physical devices on WiFi)
-  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoClient?.hostUri;
-  const host = hostUri ? hostUri.split(':')[0] : null;
-  if (host) {
-    const url = `http://${host}:5000/api`;
-    console.log('🔌 Auto-detected from Expo host (physical device):', url);
-    return url;
+  const hostCandidates = getExpoHostCandidates();
+  const lanHost = hostCandidates.find((host) => !isLikelyTunnelHost(host));
+
+  if (lanHost) {
+    const detected = buildApiUrl(lanHost);
+    console.log('[api] Auto-detected local API URL:', detected);
+    return detected;
   }
 
-  // 4. Android emulator fallback (only if auto-detect fails)
   if (Platform.OS === 'android') {
-    console.log('🔌 Using Android emulator IP');
-    return 'http://10.0.2.2:5000/api';
+    return buildApiUrl('10.0.2.2');
   }
 
-  // 5. No valid URL found
-  const errorMsg = '❌ Could not determine API URL.\n\nTo fix:\n1. Make sure Backend is running: npm run dev in Backend folder\n2. Phone and computer must be on SAME WiFi\n3. Restart Expo: npm start\n4. Scan fresh QR code';
-  console.error(errorMsg);
-  throw new Error(errorMsg);
+  return buildApiUrl('localhost');
 };
 
 export const API_URL = getApiUrl();
-console.log('✅ API_URL:', API_URL);
+axios.defaults.timeout = 20000;
+console.log('[api] Resolved API_URL:', API_URL);
