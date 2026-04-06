@@ -1,70 +1,214 @@
 const Booking = require('../models/Booking');
 const Trainer = require('../models/Trainer');
 const WorkoutSession = require('../models/WorkoutSession');
+const PaymentIntent = require('../models/PaymentIntent');
+const { initiateKhaltiPayment, lookupKhaltiPayment } = require('../utils/khalti');
+const { randomUUID } = require('crypto');
 
-// Create a new booking
-exports.createBooking = async (req, res) => {
-  try {
-    const { trainerId, sessionId, type } = req.body;
-    const userId = req.user; // from authMiddleware
+const appendQueryParams = (baseUrl, params) => {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  const query = new URLSearchParams(params).toString();
+  return `${baseUrl}${separator}${query}`;
+};
 
-    if (!type || !['trainer', 'session'].includes(type)) {
-      return res.status(400).json({ success: false, message: 'Invalid booking type' });
+const resolveBookingDetails = async (userId, type, trainerId, sessionId) => {
+  if (!type || !['trainer', 'session'].includes(type)) {
+    throw new Error('Invalid booking type');
+  }
+
+  const existingBooking = await Booking.findOne({
+    userId,
+    ...(type === 'trainer' ? { trainerId } : { sessionId }),
+    type,
+    isActive: true,
+  });
+
+  if (existingBooking) {
+    throw new Error('Already booked');
+  }
+
+  if (type === 'trainer' && trainerId) {
+    const trainer = await Trainer.findById(trainerId);
+    if (!trainer) {
+      throw new Error('Trainer not found');
     }
 
-    // Check if already booked
-    const existingBooking = await Booking.findOne({
-      userId,
-      ...(type === 'trainer' ? { trainerId } : { sessionId }),
+    return {
       type,
-      isActive: true,
-    });
-
-    if (existingBooking) {
-      return res.status(400).json({ success: false, message: 'Already booked' });
-    }
-
-    let bookingData = {
-      userId,
-      type,
-      bookedAt: new Date(),
-      expiresAt: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      isActive: true,
-    };
-
-    if (type === 'trainer' && trainerId) {
-      const trainer = await Trainer.findById(trainerId);
-      if (!trainer) {
-        return res.status(404).json({ success: false, message: 'Trainer not found' });
-      }
-      bookingData = {
-        ...bookingData,
-        trainerId,
+      amount: Number(trainer.rate),
+      payload: {
+        trainerId: String(trainer._id),
         trainerName: trainer.name,
         trainerType: trainer.type,
         trainerRate: trainer.rate,
         trainerPhone: trainer.phone,
-      };
-    } else if (type === 'session' && sessionId) {
-      const session = await WorkoutSession.findById(sessionId);
-      if (!session) {
-        return res.status(404).json({ success: false, message: 'Session not found' });
-      }
-      bookingData = {
-        ...bookingData,
-        sessionId,
+      },
+      orderName: `Trainer booking - ${trainer.name}`,
+    };
+  }
+
+  if (type === 'session' && sessionId) {
+    const session = await WorkoutSession.findById(sessionId);
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    return {
+      type,
+      amount: Number(session.rate),
+      payload: {
+        sessionId: String(session._id),
         sessionType: session.type,
         sessionTime: session.time,
         sessionDuration: session.duration,
         sessionRate: session.rate,
         sessionPhone: session.phone || '',
-      };
-    } else {
-      return res.status(400).json({ success: false, message: 'Trainer ID or Session ID is required' });
+      },
+      orderName: `Session booking - ${session.type}`,
+    };
+  }
+
+  throw new Error('Trainer ID or Session ID is required');
+};
+
+const createBookingFromPayload = async (userId, payload) => {
+  const bookingData = {
+    userId,
+    type: payload.type,
+    bookedAt: new Date(),
+    expiresAt: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000),
+    isActive: true,
+  };
+
+  if (payload.type === 'trainer') {
+    return Booking.create({
+      ...bookingData,
+      trainerId: payload.trainerId,
+      trainerName: payload.trainerName,
+      trainerType: payload.trainerType,
+      trainerRate: payload.trainerRate,
+      trainerPhone: payload.trainerPhone,
+    });
+  }
+
+  return Booking.create({
+    ...bookingData,
+    sessionId: payload.sessionId,
+    sessionType: payload.sessionType,
+    sessionTime: payload.sessionTime,
+    sessionDuration: payload.sessionDuration,
+    sessionRate: payload.sessionRate,
+    sessionPhone: payload.sessionPhone,
+  });
+};
+
+// Create a new booking
+exports.createBooking = async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Direct booking is disabled. Use Khalti payment endpoints.',
+  });
+};
+
+exports.initiateKhaltiBooking = async (req, res) => {
+  try {
+    const userId = req.user;
+    const { trainerId, sessionId, type, returnUrl } = req.body;
+
+    const details = await resolveBookingDetails(userId, type, trainerId, sessionId);
+    const amountInPaisa = Math.round(Number(details.amount) * 100);
+    if (!Number.isFinite(amountInPaisa) || amountInPaisa <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid booking amount' });
     }
 
-    const booking = new Booking(bookingData);
-    await booking.save();
+    const intentId = randomUUID();
+    const purchaseOrderId = `booking-${userId}-${intentId}`;
+    const finalReturnUrl = appendQueryParams(
+      returnUrl || 'musclegarage://payment-callback',
+      { flow: 'booking', intentId }
+    );
+
+    const khaltiResponse = await initiateKhaltiPayment({
+      amount: amountInPaisa,
+      purchaseOrderId,
+      purchaseOrderName: details.orderName,
+      returnUrl: finalReturnUrl,
+      websiteUrl: 'https://musclegarage.app',
+    });
+
+    await PaymentIntent.create({
+      intentId,
+      flow: 'booking',
+      userId,
+      amount: amountInPaisa,
+      pidx: khaltiResponse.pidx,
+      purchaseOrderId,
+      payload: {
+        type: details.type,
+        ...details.payload,
+      },
+      status: 'pending',
+    });
+
+    res.status(200).json({
+      success: true,
+      intentId,
+      pidx: khaltiResponse.pidx,
+      paymentUrl: khaltiResponse.payment_url,
+      expiresAt: khaltiResponse.expires_at,
+      expiresIn: khaltiResponse.expires_in,
+    });
+  } catch (err) {
+    console.error('Initiate booking Khalti error:', err);
+    const known400 = ['Invalid booking type', 'Already booked', 'Trainer not found', 'Session not found', 'Trainer ID or Session ID is required'];
+    const status = err.statusCode || (known400.includes(err.message) ? 400 : 500);
+    res.status(status).json({ success: false, message: err.message || 'Failed to initiate Khalti payment' });
+  }
+};
+
+exports.completeKhaltiBooking = async (req, res) => {
+  try {
+    const userId = req.user;
+    const { intentId, pidx } = req.body;
+
+    if (!intentId || !pidx) {
+      return res.status(400).json({ success: false, message: 'intentId and pidx are required' });
+    }
+
+    const intent = await PaymentIntent.findOne({ intentId, flow: 'booking', userId });
+    if (!intent) {
+      return res.status(404).json({ success: false, message: 'Payment intent not found' });
+    }
+
+    if (intent.status === 'consumed') {
+      return res.status(409).json({ success: false, message: 'Payment intent already consumed' });
+    }
+
+    if (intent.pidx !== pidx) {
+      return res.status(400).json({ success: false, message: 'Payment reference mismatch' });
+    }
+
+    const lookup = await lookupKhaltiPayment(pidx);
+    if (lookup.status !== 'Completed') {
+      intent.status = 'failed';
+      intent.khaltiResponse = lookup;
+      await intent.save();
+      return res.status(400).json({ success: false, message: 'Payment not completed' });
+    }
+
+    const payload = intent.payload || {};
+    await resolveBookingDetails(
+      userId,
+      payload.type,
+      payload.trainerId,
+      payload.sessionId
+    );
+
+    const booking = await createBookingFromPayload(userId, payload);
+
+    intent.status = 'consumed';
+    intent.khaltiResponse = lookup;
+    await intent.save();
 
     res.status(201).json({
       success: true,
@@ -72,8 +216,10 @@ exports.createBooking = async (req, res) => {
       booking,
     });
   } catch (err) {
-    console.error('Create booking error:', err);
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    console.error('Complete booking Khalti error:', err);
+    const known400 = ['Invalid booking type', 'Already booked', 'Trainer not found', 'Session not found', 'Trainer ID or Session ID is required'];
+    const status = known400.includes(err.message) ? 400 : 500;
+    res.status(status).json({ success: false, message: err.message || 'Failed to complete booking payment' });
   }
 };
 

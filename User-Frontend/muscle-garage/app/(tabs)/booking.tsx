@@ -11,11 +11,15 @@ import {
   SafeAreaView,
   Linking,
 } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { API_URL } from '@/constants/api';
 import { useAuth } from '@/context/AuthContext';
+import Animated from 'react-native-reanimated';
+import { useLiquidTabBarScrollHandler } from '@/components/shared/tabBarVisibility';
 
 interface Trainer {
   _id: string;
@@ -75,6 +79,7 @@ export default function BookingScreen() {
   const [showTrainerModal, setShowTrainerModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showCertPreview, setShowCertPreview] = useState(false);
+  const scrollHandler = useLiquidTabBarScrollHandler();
 
   useEffect(() => {
     fetchData();
@@ -234,84 +239,57 @@ export default function BookingScreen() {
     }
   };
 
-  const handleBookTrainer = async () => {
-    if (!selectedTrainer) return;
+  const initiateBookingPayment = async (payload: {
+    type: 'trainer' | 'session';
+    trainerId?: string;
+    sessionId?: string;
+  }) => {
+    if (!token) return;
+
     try {
-      // Save to API
+      const appRedirectUrl = ExpoLinking.createURL('/payment-callback');
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
       const response = await axios.post(
-        `${API_URL}/booking/create`,
+        `${API_URL}/booking/khalti/initiate`,
         {
-          trainerId: selectedTrainer._id,
-          type: 'trainer',
+          ...payload,
+          returnUrl: `${API_URL}/payment/khalti/redirect?deeplink=${encodeURIComponent(appRedirectUrl)}`,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: authHeader } }
       );
 
-      if (response.data.success) {
-        // Add to active bookings locally
-        const newBooking: ActiveBooking = {
-          _id: selectedTrainer._id,
-          type: 'trainer',
-          name: selectedTrainer.name,
-          subtitle: selectedTrainer.type,
-          rate: selectedTrainer.rate,
-          phone: selectedTrainer.phone,
-          bookedAt: new Date().toISOString(),
-        };
-        setActiveBookings([...activeBookings, newBooking]);
-        setBookedIds(new Set([...bookedIds, selectedTrainer._id]));
-        setShowTrainerModal(false);
-        setError('');
+      if (response.data.success && response.data.paymentUrl) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          response.data.paymentUrl,
+          appRedirectUrl
+        );
+
+        if (result.type === 'success' && result.url) {
+          await ExpoLinking.openURL(result.url);
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
+          setError('Payment was cancelled.');
+        }
       }
     } catch (err: any) {
-      console.error('Error booking trainer:', err);
-      if (err.response?.status === 400 && err.response?.data?.message === 'Already booked') {
-        // Already booked, just close modal
-        setShowTrainerModal(false);
-      } else {
-        setError(err.response?.data?.message || 'Failed to book trainer');
-      }
+      console.error('Error initiating booking payment:', err);
+      setError(err.response?.data?.message || 'Failed to start payment');
     }
+  };
+
+  const handleBookTrainer = async () => {
+    if (!selectedTrainer) return;
+    await initiateBookingPayment({
+      type: 'trainer',
+      trainerId: selectedTrainer._id,
+    });
   };
 
   const handleBookSession = async () => {
     if (!selectedSession) return;
-    try {
-      // Save to API
-      const response = await axios.post(
-        `${API_URL}/booking/create`,
-        {
-          sessionId: selectedSession._id,
-          type: 'session',
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        // Add to active bookings locally
-        const newBooking: ActiveBooking = {
-          _id: selectedSession._id,
-          type: 'session',
-          name: selectedSession.type,
-          subtitle: `${selectedSession.time} - ${selectedSession.duration} min`,
-          rate: selectedSession.rate,
-          phone: selectedSession.phone || '',
-          bookedAt: new Date().toISOString(),
-        };
-        setActiveBookings([...activeBookings, newBooking]);
-        setBookedIds(new Set([...bookedIds, selectedSession._id]));
-        setShowSessionModal(false);
-        setError('');
-      }
-    } catch (err: any) {
-      console.error('Error booking session:', err);
-      if (err.response?.status === 400 && err.response?.data?.message === 'Already booked') {
-        // Already booked, just close modal
-        setShowSessionModal(false);
-      } else {
-        setError(err.response?.data?.message || 'Failed to book session');
-      }
-    }
+    await initiateBookingPayment({
+      type: 'session',
+      sessionId: selectedSession._id,
+    });
   };
 
   if (loading) {
@@ -324,7 +302,9 @@ export default function BookingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -471,7 +451,7 @@ export default function BookingScreen() {
             ))
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Trainer Detail Modal */}
       <Modal visible={showTrainerModal} transparent animationType="fade">

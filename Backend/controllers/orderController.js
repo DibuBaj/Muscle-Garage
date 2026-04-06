@@ -1,56 +1,213 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const PaymentIntent = require('../models/PaymentIntent');
+const { initiateKhaltiPayment, lookupKhaltiPayment } = require('../utils/khalti');
+const { randomUUID } = require('crypto');
+
+const appendQueryParams = (baseUrl, params) => {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  const query = new URLSearchParams(params).toString();
+  return `${baseUrl}${separator}${query}`;
+};
+
+const buildOrderSummary = async (products = []) => {
+  if (!Array.isArray(products) || products.length === 0) {
+    throw new Error('Missing required fields');
+  }
+
+  const orderItems = [];
+  let orderTotal = 0;
+
+  for (const item of products) {
+    const dbProduct = await Product.findById(item.productId);
+    if (!dbProduct) {
+      throw new Error(`Product not found: ${item.productId}`);
+    }
+
+    const quantity = Math.min(Number(item.quantity) || 1, dbProduct.stock);
+    if (quantity <= 0) {
+      throw new Error(`${dbProduct.name} is out of stock`);
+    }
+
+    orderTotal += dbProduct.price * quantity;
+    orderItems.push({
+      productId: String(dbProduct._id),
+      productName: dbProduct.name,
+      quantity,
+      priceAtPurchase: dbProduct.price,
+    });
+  }
+
+  return {
+    orderItems,
+    orderTotal,
+    shippingCost: 100,
+  };
+};
+
+const createOrderFromPayload = async (payload) => {
+  const orderItems = [];
+
+  for (const item of payload.orderItems) {
+    const dbProduct = await Product.findById(item.productId);
+    if (!dbProduct) {
+      throw new Error(`Product not found: ${item.productId}`);
+    }
+
+    if (dbProduct.stock < item.quantity) {
+      throw new Error(`${dbProduct.name} does not have enough stock`);
+    }
+
+    dbProduct.stock = Math.max(0, dbProduct.stock - item.quantity);
+    await dbProduct.save();
+
+    orderItems.push({
+      productId: dbProduct._id,
+      productName: item.productName,
+      quantity: item.quantity,
+      priceAtPurchase: item.priceAtPurchase,
+    });
+  }
+
+  return Order.create({
+    customerName: payload.customerName,
+    phone: payload.phone,
+    email: payload.email,
+    location: payload.location,
+    products: orderItems,
+    status: 'Unfulfilled',
+    paymentMethod: 'Online',
+    orderTotal: payload.orderTotal,
+    shippingCost: payload.shippingCost,
+  });
+};
 
 // User: create order
 exports.createOrder = async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Direct order creation is disabled. Use Khalti payment endpoints.',
+  });
+};
+
+exports.initiateKhaltiOrder = async (req, res) => {
   try {
-    const { customerName, phone, email, location, products = [], paymentMethod = 'Cash on Delivery' } = req.body;
+    const {
+      customerName,
+      phone,
+      email,
+      location,
+      products = [],
+      returnUrl,
+    } = req.body;
 
     if (!customerName || !phone || !email || !location || !products.length) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    const shippingCost = 100;
-    const orderItems = [];
-    let orderTotal = 0;
+    const summary = await buildOrderSummary(products);
+    const grandTotal = summary.orderTotal + summary.shippingCost;
+    const amountInPaisa = Math.round(grandTotal * 100);
 
-    for (const item of products) {
-      const dbProduct = await Product.findById(item.productId);
-      if (!dbProduct) {
-        return res.status(404).json({ success: false, message: `Product not found: ${item.productId}` });
-      }
-      const quantity = Math.min(item.quantity || 1, dbProduct.stock);
-      if (quantity <= 0) {
-        return res.status(400).json({ success: false, message: `${dbProduct.name} is out of stock` });
-      }
-      orderTotal += dbProduct.price * quantity;
-      orderItems.push({
-        productId: dbProduct._id,
-        productName: dbProduct.name,
-        quantity,
-        priceAtPurchase: dbProduct.price,
-      });
-      // reduce stock
-      dbProduct.stock = Math.max(0, dbProduct.stock - quantity);
-      await dbProduct.save();
+    if (!Number.isFinite(amountInPaisa) || amountInPaisa <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid order amount' });
     }
 
-    const order = await Order.create({
-      customerName,
-      phone,
-      email,
-      location,
-      products: orderItems,
-      status: 'Unfulfilled',
-      paymentMethod,
-      orderTotal,
-      shippingCost,
+    const intentId = randomUUID();
+    const purchaseOrderId = `store-${Date.now()}-${intentId}`;
+    const finalReturnUrl = appendQueryParams(
+      returnUrl || 'musclegarage://payment-callback',
+      { flow: 'store', intentId }
+    );
+
+    const khaltiResponse = await initiateKhaltiPayment({
+      amount: amountInPaisa,
+      purchaseOrderId,
+      purchaseOrderName: `Store order - ${customerName}`,
+      returnUrl: finalReturnUrl,
+      websiteUrl: 'https://musclegarage.app',
     });
+
+    await PaymentIntent.create({
+      intentId,
+      flow: 'store',
+      email,
+      amount: amountInPaisa,
+      pidx: khaltiResponse.pidx,
+      purchaseOrderId,
+      payload: {
+        customerName,
+        phone,
+        email,
+        location,
+        orderItems: summary.orderItems,
+        orderTotal: summary.orderTotal,
+        shippingCost: summary.shippingCost,
+      },
+      status: 'pending',
+    });
+
+    res.status(200).json({
+      success: true,
+      intentId,
+      pidx: khaltiResponse.pidx,
+      paymentUrl: khaltiResponse.payment_url,
+      expiresAt: khaltiResponse.expires_at,
+      expiresIn: khaltiResponse.expires_in,
+    });
+  } catch (err) {
+    console.error('Initiate store Khalti error:', err);
+    const isKnown = err.message?.includes('Product not found') || err.message?.includes('out of stock') || err.message === 'Missing required fields';
+    res.status(err.statusCode || (isKnown ? 400 : 500)).json({
+      success: false,
+      message: err.message || 'Failed to initiate Khalti payment',
+    });
+  }
+};
+
+exports.completeKhaltiOrder = async (req, res) => {
+  try {
+    const { intentId, pidx } = req.body;
+
+    if (!intentId || !pidx) {
+      return res.status(400).json({ success: false, message: 'intentId and pidx are required' });
+    }
+
+    const intent = await PaymentIntent.findOne({ intentId, flow: 'store' });
+    if (!intent) {
+      return res.status(404).json({ success: false, message: 'Payment intent not found' });
+    }
+
+    if (intent.status === 'consumed') {
+      return res.status(409).json({ success: false, message: 'Payment intent already consumed' });
+    }
+
+    if (intent.pidx !== pidx) {
+      return res.status(400).json({ success: false, message: 'Payment reference mismatch' });
+    }
+
+    const lookup = await lookupKhaltiPayment(pidx);
+    if (lookup.status !== 'Completed') {
+      intent.status = 'failed';
+      intent.khaltiResponse = lookup;
+      await intent.save();
+      return res.status(400).json({ success: false, message: 'Payment not completed' });
+    }
+
+    const order = await createOrderFromPayload(intent.payload);
+
+    intent.status = 'consumed';
+    intent.khaltiResponse = lookup;
+    await intent.save();
 
     res.status(201).json({ success: true, order });
   } catch (err) {
-    console.error('Create order error:', err);
-    res.status(500).json({ success: false, message: 'Failed to place order' });
+    console.error('Complete store Khalti error:', err);
+    const isKnown = err.message?.includes('Product not found') || err.message?.includes('stock');
+    res.status(isKnown ? 400 : 500).json({
+      success: false,
+      message: err.message || 'Failed to complete order payment',
+    });
   }
 };
 

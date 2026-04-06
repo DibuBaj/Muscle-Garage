@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, TextInput, Animated, StyleSheet, ActivityIndicator, Modal, SafeAreaView, PanResponder, BackHandler } from 'react-native';
+import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, TextInput, Animated, StyleSheet, ActivityIndicator, Modal, SafeAreaView, PanResponder, BackHandler, Linking } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import MultiSlider from '@ptomasroos/react-native-multi-slider';
+import * as ExpoLinking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { Colors } from '@/constants/colors';
 import { API_URL } from '@/constants/api';
 import { useAuth } from '@/context/AuthContext';
+import { useLiquidTabBarScrollHandler } from '@/components/shared/tabBarVisibility';
 
 interface Product {
   _id: string;
@@ -47,6 +51,7 @@ const StoreScreen = () => {
   ] as const;
 
   const auth = useAuth();
+  const scrollHandler = useLiquidTabBarScrollHandler();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +66,7 @@ const StoreScreen = () => {
   const [toast, setToast] = useState('');
   const [filters, setFilters] = useState({ cats: new Set<string>(), inStock: false, min: 0, max: 50000, sort: 'date-desc' });
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
-  const [checkout, setCheckout] = useState({ name: '', email: '', phone: '', location: '', paymentMethod: 'Cash on Delivery' });
+  const [checkout, setCheckout] = useState({ name: '', email: '', phone: '', location: '', paymentMethod: 'Online' });
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -264,7 +269,8 @@ const StoreScreen = () => {
 
     try {
       setPlacing(true);
-      const res = await fetch(`${API_URL}/orders`, {
+      const appRedirectUrl = ExpoLinking.createURL('/payment-callback');
+      const res = await fetch(`${API_URL}/orders/khalti/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -273,15 +279,21 @@ const StoreScreen = () => {
           phone: checkout.phone.trim(),
           location: checkout.location.trim(),
           products: cart.map((i) => ({ productId: i._id, quantity: i.quantity })),
-          paymentMethod: checkout.paymentMethod,
+          returnUrl: `${API_URL}/payment/khalti/redirect?deeplink=${encodeURIComponent(appRedirectUrl)}`,
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        setConfirmation(data);
-        setCart([]);
-        setCheckoutOpen(false);
-        setCheckout((prev) => ({ ...prev, location: '' }));
+      if (data.success && data.paymentUrl) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.paymentUrl,
+          appRedirectUrl
+        );
+
+        if (result.type === 'success' && result.url) {
+          await ExpoLinking.openURL(result.url);
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
+          showToast('Payment was cancelled');
+        }
       } else {
         showToast(data.message || 'Failed to place order');
       }
@@ -577,16 +589,10 @@ const StoreScreen = () => {
 
             <Label text="Payment Method" />
             <View style={styles.paymentOptions}>
-              {['Cash on Delivery', 'Online'].map((method) => (
-                <TouchableOpacity
-                  key={method}
-                  style={[styles.paymentOption, checkout.paymentMethod === method && styles.paymentOptionActive]}
-                  onPress={() => setCheckout({ ...checkout, paymentMethod: method })}
-                >
-                  <View style={[styles.radio, checkout.paymentMethod === method && styles.radioActive]} />
-                  <Text style={styles.paymentText}>{method}</Text>
-                </TouchableOpacity>
-              ))}
+              <View style={[styles.paymentOption, styles.paymentOptionActive]}>
+                <View style={[styles.radio, styles.radioActive]} />
+                <Text style={styles.paymentText}>Khalti</Text>
+              </View>
             </View>
 
             <View style={styles.orderSummary}>
@@ -838,11 +844,13 @@ const StoreScreen = () => {
       {error && <Text style={styles.errorText}>{error}</Text>}
 
       {!selected && !loading && (
-        <FlatList
+        <Reanimated.FlatList
           data={filtered}
           renderItem={renderCard}
           keyExtractor={(item) => item._id}
           numColumns={2}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
           style={styles.gridList}
           columnWrapperStyle={styles.gridWrapper}
           contentContainerStyle={styles.gridContent}
@@ -1054,7 +1062,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#1a1a1a',
     gap: 10,
-    transition: 'all 0.2s ease'
   },
   paymentOptionActive: { 
     backgroundColor: Colors.primary + '25',

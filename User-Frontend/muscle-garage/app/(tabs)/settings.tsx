@@ -20,6 +20,8 @@ import { Colors } from '@/constants/colors';
 import axios from 'axios';
 import { API_URL } from '@/constants/api';
 import ToastNotification from '@/components/toast-notification';
+import Animated from 'react-native-reanimated';
+import { useLiquidTabBarScrollHandler } from '@/components/shared/tabBarVisibility';
 
 interface UserDetails {
   id: string;
@@ -65,6 +67,7 @@ export default function SettingsScreen() {
     new: false,
     confirm: false,
   });
+  const scrollHandler = useLiquidTabBarScrollHandler();
 
   useEffect(() => {
     fetchUserProfile();
@@ -350,7 +353,12 @@ export default function SettingsScreen() {
       />
 
       <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Animated.ScrollView
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>Settings</Text>
           </View>
@@ -751,7 +759,7 @@ export default function SettingsScreen() {
             <View style={{ height: 40 }} />
             </>
           )}
-        </ScrollView>
+        </Animated.ScrollView>
       </SafeAreaView>
     </View>
   );

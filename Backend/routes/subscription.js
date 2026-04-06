@@ -4,6 +4,8 @@ const adminMiddleware = require('../middleware/adminMiddleware');
 const {
   getUserSubscription,
   subscribe,
+  initiateKhaltiSubscription,
+  completeKhaltiSubscription,
   pauseSubscription,
   resumeSubscription,
   adminPauseSubscription,
@@ -29,6 +31,10 @@ router.get('/me', authMiddleware, getUserSubscription);
 
 // Subscribe to a plan
 router.post('/subscribe', authMiddleware, subscribe);
+
+// Khalti payment flow for subscriptions
+router.post('/khalti/initiate', authMiddleware, initiateKhaltiSubscription);
+router.post('/khalti/complete', authMiddleware, completeKhaltiSubscription);
 
 // Pause subscription
 router.post('/pause', authMiddleware, pauseSubscription);

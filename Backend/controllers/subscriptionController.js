@@ -1,6 +1,9 @@
 const Subscription = require('../models/Subscription');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const User = require('../models/User');
+const PaymentIntent = require('../models/PaymentIntent');
+const { initiateKhaltiPayment, lookupKhaltiPayment } = require('../utils/khalti');
+const { randomUUID } = require('crypto');
 
 // Legacy plans object for backward compatibility
 const SUBSCRIPTION_PLANS = {
@@ -60,6 +63,75 @@ const calculateDaysLeft = (subscription) => {
   return Math.max(0, daysLeft);
 };
 
+const appendQueryParams = (baseUrl, params) => {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  const query = new URLSearchParams(params).toString();
+  return `${baseUrl}${separator}${query}`;
+};
+
+const resolvePlanDetails = async (plan) => {
+  if (!plan) {
+    throw new Error('Plan is required');
+  }
+
+  if (SUBSCRIPTION_PLANS[plan]) {
+    return {
+      planId: plan,
+      days: SUBSCRIPTION_PLANS[plan].days,
+      price: SUBSCRIPTION_PLANS[plan].price,
+      name: plan,
+    };
+  }
+
+  const planDoc = await SubscriptionPlan.findById(plan);
+  if (!planDoc || !planDoc.isActive) {
+    throw new Error('Invalid subscription plan');
+  }
+
+  return {
+    planId: String(planDoc._id),
+    days: planDoc.days,
+    price: planDoc.price,
+    name: planDoc.name,
+  };
+};
+
+const applySubscriptionForUser = async (userId, plan) => {
+  const planDetails = await resolvePlanDetails(plan);
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  let subscription = await Subscription.findOne({ user: userId });
+  if (!subscription) {
+    subscription = new Subscription({ user: userId });
+  }
+
+  const startDate = new Date();
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + planDetails.days);
+
+  subscription.totalDays = planDetails.days;
+  subscription.startDate = startDate;
+  subscription.endDate = endDate;
+  subscription.hasSubscribedBefore = true;
+  subscription.status = 'active';
+  subscription.pauseInfo = {
+    pauseStartDate: null,
+    pauseEndDate: null,
+    lastPauseDate: null,
+  };
+
+  await subscription.save();
+
+  return {
+    planDetails,
+    subscription,
+  };
+};
+
 exports.getUserSubscription = async (req, res) => {
   try {
     const userId = req.user;
@@ -115,65 +187,105 @@ exports.getUserSubscription = async (req, res) => {
 };
 
 exports.subscribe = async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Direct subscription is disabled. Use Khalti payment endpoints.',
+  });
+};
+
+exports.initiateKhaltiSubscription = async (req, res) => {
   try {
     const userId = req.user;
-    const { plan } = req.body;
+    const { plan, returnUrl } = req.body;
 
-    // Validate plan - check if it's a MongoDB ID or legacy key
-    let planDetails;
-    
-    if (SUBSCRIPTION_PLANS[plan]) {
-      // Legacy plan key (backward compatibility)
-      planDetails = SUBSCRIPTION_PLANS[plan];
-    } else {
-      // Try to find plan in database
-      const planDoc = await SubscriptionPlan.findById(plan);
-      if (!planDoc || !planDoc.isActive) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid subscription plan',
-        });
-      }
-      planDetails = {
-        days: planDoc.days,
-        price: planDoc.price,
-      };
+    const planDetails = await resolvePlanDetails(plan);
+    const amountInPaisa = Math.round(Number(planDetails.price) * 100);
+    if (!Number.isFinite(amountInPaisa) || amountInPaisa <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid plan amount' });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+    const intentId = randomUUID();
+    const purchaseOrderId = `membership-${userId}-${intentId}`;
+    const finalReturnUrl = appendQueryParams(
+      returnUrl || 'musclegarage://payment-callback',
+      { flow: 'membership', intentId }
+    );
+
+    const khaltiResponse = await initiateKhaltiPayment({
+      amount: amountInPaisa,
+      purchaseOrderId,
+      purchaseOrderName: `Membership ${planDetails.name}`,
+      returnUrl: finalReturnUrl,
+      websiteUrl: 'https://musclegarage.app',
+    });
+
+    await PaymentIntent.create({
+      intentId,
+      flow: 'membership',
+      userId,
+      amount: amountInPaisa,
+      pidx: khaltiResponse.pidx,
+      purchaseOrderId,
+      payload: {
+        plan: planDetails.planId,
+      },
+      status: 'pending',
+    });
+
+    res.status(200).json({
+      success: true,
+      intentId,
+      pidx: khaltiResponse.pidx,
+      paymentUrl: khaltiResponse.payment_url,
+      expiresAt: khaltiResponse.expires_at,
+      expiresIn: khaltiResponse.expires_in,
+    });
+  } catch (err) {
+    console.error('Initiate membership Khalti error:', err);
+    const status = err.statusCode || (err.message === 'Invalid subscription plan' ? 400 : 500);
+    res.status(status).json({
+      success: false,
+      message: err.message || 'Failed to initiate Khalti payment',
+    });
+  }
+};
+
+exports.completeKhaltiSubscription = async (req, res) => {
+  try {
+    const userId = req.user;
+    const { intentId, pidx } = req.body;
+
+    if (!intentId || !pidx) {
+      return res.status(400).json({ success: false, message: 'intentId and pidx are required' });
     }
 
-    let subscription = await Subscription.findOne({ user: userId });
-
-    if (!subscription) {
-      subscription = new Subscription({ user: userId });
+    const intent = await PaymentIntent.findOne({ intentId, flow: 'membership', userId });
+    if (!intent) {
+      return res.status(404).json({ success: false, message: 'Payment intent not found' });
     }
 
-    // Get plan details (already retrieved above)
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + planDetails.days);
+    if (intent.status === 'consumed') {
+      return res.status(409).json({ success: false, message: 'Payment intent already consumed' });
+    }
 
-    // Update subscription
-    subscription.totalDays = planDetails.days;
-    subscription.startDate = startDate;
-    subscription.endDate = endDate;
-    subscription.hasSubscribedBefore = true;
-    subscription.status = 'active';
-    subscription.pauseInfo = {
-      pauseStartDate: null,
-      pauseEndDate: null,
-      lastPauseDate: null,
-    };
+    if (intent.pidx !== pidx) {
+      return res.status(400).json({ success: false, message: 'Payment reference mismatch' });
+    }
 
-    await subscription.save();
+    const lookup = await lookupKhaltiPayment(pidx);
+    if (lookup.status !== 'Completed') {
+      intent.status = 'failed';
+      intent.khaltiResponse = lookup;
+      await intent.save();
+      return res.status(400).json({ success: false, message: 'Payment not completed' });
+    }
 
+    const { subscription } = await applySubscriptionForUser(userId, intent.payload.plan);
     const calculatedDaysLeft = calculateDaysLeft(subscription);
+
+    intent.status = 'consumed';
+    intent.khaltiResponse = lookup;
+    await intent.save();
 
     res.status(200).json({
       success: true,
@@ -193,10 +305,10 @@ exports.subscribe = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Subscribe error:', err);
+    console.error('Complete membership Khalti error:', err);
     res.status(500).json({
       success: false,
-      message: 'Failed to subscribe',
+      message: err.message || 'Failed to complete membership payment',
     });
   }
 };

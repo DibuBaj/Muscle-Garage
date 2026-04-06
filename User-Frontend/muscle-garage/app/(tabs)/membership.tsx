@@ -5,10 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   SafeAreaView,
+  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ExpoLinking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { API_URL } from '@/constants/api';
@@ -17,6 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 import SubscriptionProgressBar from '@/components/subscription-progress-bar';
 import PauseSubscriptionModal from '@/components/pause-subscription-modal';
 import ToastNotification from '@/components/toast-notification';
+import Animated from 'react-native-reanimated';
+import { useLiquidTabBarScrollHandler } from '@/components/shared/tabBarVisibility';
 
 interface SubscriptionPlan {
   _id?: string;
@@ -55,6 +59,7 @@ export default function MembershipScreen() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [pauseModalVisible, setPauseModalVisible] = useState(false);
+  const scrollHandler = useLiquidTabBarScrollHandler();
 
   const fetchPlans = async () => {
     try {
@@ -116,28 +121,33 @@ export default function MembershipScreen() {
 
     setSubscribing(true);
     try {
-      const planId = selectedPlan;
+      const appRedirectUrl = ExpoLinking.createURL('/payment-callback');
+      const authHeader = token?.startsWith('Bearer ') ? token : `Bearer ${token}`;
       const response = await axios.post(
-        `${API_URL}/subscription/subscribe`,
-        { plan: planId },
+        `${API_URL}/subscription/khalti/initiate`,
+        {
+          plan: selectedPlan,
+          returnUrl: `${API_URL}/payment/khalti/redirect?deeplink=${encodeURIComponent(appRedirectUrl)}`,
+        },
         {
           headers: {
-            Authorization: token,
+            Authorization: authHeader,
           },
         }
       );
 
-      if (response.data.success) {
-        setSuccessMessage('Subscription successful!');
-        setSelectedPlan(null);
-        
-        // Refresh subscription data
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await fetchSubscription();
-        
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 2000);
+      if (response.data.success && response.data.paymentUrl) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          response.data.paymentUrl,
+          appRedirectUrl
+        );
+
+        if (result.type === 'success' && result.url) {
+          await ExpoLinking.openURL(result.url);
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
+          setErrorMessage('Payment was cancelled.');
+          setTimeout(() => setErrorMessage(''), 3000);
+        }
       }
     } catch (error: any) {
       console.error('Subscription error:', error);
@@ -209,7 +219,12 @@ export default function MembershipScreen() {
         type="error"
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Membership</Text>
@@ -363,7 +378,7 @@ export default function MembershipScreen() {
             )}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       <PauseSubscriptionModal
         visible={pauseModalVisible}

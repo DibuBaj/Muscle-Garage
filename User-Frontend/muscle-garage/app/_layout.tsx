@@ -4,7 +4,7 @@ import 'react-native-reanimated';
 import { AuthProvider } from '@/context/AuthContext';
 import { useFonts } from '@/hooks/useFonts';
 import { useEffect } from 'react';
-import { Keyboard } from 'react-native';
+import { Keyboard, Platform } from 'react-native';
 
 export const unstable_settings = {
   initialRouteName: 'index',
@@ -30,7 +30,10 @@ export default function RootLayout() {
     <AuthProvider>
       <Stack screenOptions={{ 
         headerShown: false,
-        contentStyle: { backgroundColor: '#1C1C1C' }
+        contentStyle: { backgroundColor: '#1C1C1C' },
+        gestureEnabled: Platform.OS === 'ios',
+        fullScreenGestureEnabled: Platform.OS === 'ios',
+        animation: Platform.OS === 'ios' ? 'ios_from_right' : 'default',
       }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="auth-choice" options={{ headerShown: false }} />
@@ -40,8 +43,17 @@ export default function RootLayout() {
         <Stack.Screen name="signup" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="verify-otp" options={{ headerShown: false }} />
+        <Stack.Screen name="google-auth-callback" options={{ headerShown: false }} />
+        <Stack.Screen name="payment-callback" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen
+          name="modal"
+          options={{
+            presentation: Platform.OS === 'ios' ? 'formSheet' : 'modal',
+            gestureEnabled: Platform.OS === 'ios',
+            title: 'Modal',
+          }}
+        />
       </Stack>
       <StatusBar style="light" />
     </AuthProvider>

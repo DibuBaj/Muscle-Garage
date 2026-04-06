@@ -11,6 +11,7 @@ const sessionRoutes = require('./routes/session');
 const bookingRoutes = require('./routes/booking');
 const productRoutes = require('./routes/product');
 const orderRoutes = require('./routes/order');
+const paymentRoutes = require('./routes/payment');
 const analyticsRoutes = require('./routes/analytics');
 const { decreaseDaysDaily } = require('./controllers/subscriptionController');
 const SubscriptionPlan = require('./models/SubscriptionPlan');
@@ -49,6 +50,7 @@ app.use('/api/session', sessionRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payment', paymentRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 app.get('/', (req, res) => {

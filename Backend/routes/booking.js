@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const {
   createBooking,
+  initiateKhaltiBooking,
+  completeKhaltiBooking,
   getUserBookings,
   isBooked,
   deleteBooking,
@@ -10,6 +12,10 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 // Create a new booking
 router.post('/create', authMiddleware, createBooking);
+
+// Khalti payment flow for bookings
+router.post('/khalti/initiate', authMiddleware, initiateKhaltiBooking);
+router.post('/khalti/complete', authMiddleware, completeKhaltiBooking);
 
 // Get user's active bookings
 router.get('/my-bookings', authMiddleware, getUserBookings);

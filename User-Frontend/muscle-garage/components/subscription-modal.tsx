@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   Modal,
+  Platform,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
@@ -11,6 +12,7 @@ import axios from 'axios';
 import { API_URL } from '@/constants/api';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassModal } from '@/components/ios/GlassModal';
 
 interface SubscriptionPlan {
   _id?: string;
@@ -103,13 +105,68 @@ export default function SubscriptionModal({
     }
   };
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+  const modalBody = (
+    <>
+      <View style={styles.modalContent}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Choose Your Plan</Text>
+          <TouchableOpacity onPress={onClose} disabled={loading}>
+            <Ionicons name="close-circle" size={28} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.plansContainer}>
+          {plans.map((plan) => {
+            const planId = plan._id || plan.id;
+            const planName = plan.name || plan.label;
+            return (
+              <TouchableOpacity
+                key={planId}
+                style={[
+                  styles.planBox,
+                  selectedPlan === planId && styles.planBoxSelected,
+                ]}
+                onPress={() => !loading && setSelectedPlan(planId!)}
+                disabled={loading}
+              >
+                <Text style={styles.planLabel}>{planName}</Text>
+                <Text style={styles.planPrice}>Rs. {plan.price}</Text>
+                <Text style={styles.planDays}>({plan.days} days)</Text>
+                {selectedPlan === planId && (
+                  <View style={styles.checkmark}>
+                    <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.subscribeButton, loading && styles.subscribeButtonDisabled]}
+          onPress={handleSubscribe}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={onClose}
+          disabled={loading}
+        >
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  const iosModal = (
+    <>
       {successMessage ? (
         <View style={styles.successNotification}>
           <View style={styles.notificationContent}>
@@ -127,66 +184,42 @@ export default function SubscriptionModal({
           </View>
         </View>
       ) : null}
-      
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Choose Your Plan</Text>
-            <TouchableOpacity onPress={onClose} disabled={loading}>
-              <Ionicons name="close-circle" size={28} color={Colors.primary} />
-            </TouchableOpacity>
+      <GlassModal visible={visible} onClose={onClose} style={styles.iosSheet}>
+        {modalBody}
+      </GlassModal>
+    </>
+  );
+
+  const androidModal = (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      {successMessage ? (
+        <View style={styles.successNotification}>
+          <View style={styles.notificationContent}>
+            <Ionicons name="checkmark-circle" size={24} color={Colors.success} style={styles.notificationIcon} />
+            <Text style={styles.notificationText}>{successMessage}</Text>
           </View>
-
-          <View style={styles.plansContainer}>
-            {plans.map((plan) => {
-              const planId = plan._id || plan.id;
-              const planName = plan.name || plan.label;
-              return (
-                <TouchableOpacity
-                  key={planId}
-                  style={[
-                    styles.planBox,
-                    selectedPlan === planId && styles.planBoxSelected,
-                  ]}
-                  onPress={() => !loading && setSelectedPlan(planId!)}
-                  disabled={loading}
-                >
-                  <Text style={styles.planLabel}>{planName}</Text>
-                  <Text style={styles.planPrice}>Rs. {plan.price}</Text>
-                  <Text style={styles.planDays}>({plan.days} days)</Text>
-                  {selectedPlan === planId && (
-                    <View style={styles.checkmark}>
-                      <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.subscribeButton, loading && styles.subscribeButtonDisabled]}
-            onPress={handleSubscribe}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={Colors.white} />
-            ) : (
-              <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={onClose}
-            disabled={loading}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      ) : null}
+
+      {errorMessage ? (
+        <View style={styles.errorNotification}>
+          <View style={styles.notificationContent}>
+            <Ionicons name="alert-circle" size={24} color={Colors.error} style={styles.notificationIcon} />
+            <Text style={styles.notificationText}>{errorMessage}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={styles.overlay}>{modalBody}</View>
     </Modal>
   );
+
+  return Platform.OS === 'ios' ? iosModal : androidModal;
 }
 
 const styles = StyleSheet.create({
@@ -314,5 +347,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'center',
+  },
+  iosSheet: {
+    paddingTop: 0,
   },
 });

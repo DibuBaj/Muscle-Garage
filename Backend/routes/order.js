@@ -1,10 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const adminMiddleware = require('../middleware/adminMiddleware');
-const { createOrder, getOrders, updateOrderStatus, getUserOrders } = require('../controllers/orderController');
+const {
+	createOrder,
+	initiateKhaltiOrder,
+	completeKhaltiOrder,
+	getOrders,
+	updateOrderStatus,
+	getUserOrders,
+} = require('../controllers/orderController');
 
 // User routes
 router.post('/', createOrder);
+router.post('/khalti/initiate', initiateKhaltiOrder);
+router.post('/khalti/complete', completeKhaltiOrder);
 router.get('/user/history', getUserOrders);
 
 // Admin routes

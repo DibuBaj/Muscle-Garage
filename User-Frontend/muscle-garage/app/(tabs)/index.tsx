@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '@/constants/api';
 import axios, { AxiosError } from 'axios';
 import SubscriptionProgressBar from '@/components/subscription-progress-bar';
+import Animated from 'react-native-reanimated';
+import { useLiquidTabBarScrollHandler } from '@/components/shared/tabBarVisibility';
 
 interface Subscription {
   _id: string;
@@ -62,6 +64,7 @@ export default function DashboardScreen() {
   const [sessionBookings, setSessionBookings] = useState<Booking[]>([]);
   const [trainerBookings, setTrainerBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const scrollHandler = useLiquidTabBarScrollHandler();
 
   useEffect(() => {
     fetchDashboardData();
@@ -174,7 +177,12 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Welcome back,</Text>
@@ -387,7 +395,7 @@ export default function DashboardScreen() {
             </View> */}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

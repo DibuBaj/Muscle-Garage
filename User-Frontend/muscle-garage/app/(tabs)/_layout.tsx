@@ -1,4 +1,5 @@
-import { Tabs, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { Icon, Label, NativeTabs, VectorIcon } from 'expo-router/unstable-native-tabs';
 import React, { useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -32,86 +33,59 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: '#999',
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: 'rgba(38, 38, 38, 0.8)',
-          borderTopWidth: 0,
-          height: 80,
-          paddingBottom: 8,
-          paddingTop: 8,
-          borderRadius: 20,
-          marginHorizontal: 12,
-          marginBottom: 10,
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          borderCurve: 'continuous',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-          elevation: 0,
-          zIndex: 1,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-        tabBarIconStyle: {
-          marginBottom: 4,
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size || 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="membership"
-        options={{
-          title: 'Plans',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="card" size={size || 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="store"
-        options={{
-          title: 'Store',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bag" size={size || 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="booking"
-        options={{
-          title: 'Booking',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size || 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size || 24} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    <NativeTabs
+      minimizeBehavior="onScrollDown"
+      disableTransparentOnScrollEdge
+      blurEffect="systemUltraThinMaterialDark"
+      backgroundColor={null}
+      labelStyle={{ fontSize: 12, fontWeight: '600' }}
+      titlePositionAdjustment={{ vertical: -2 }}
+    >
+      <NativeTabs.Trigger name="index">
+        <Label>Home</Label>
+        <Icon
+          sf={{ default: 'house', selected: 'house.fill' }}
+          selectedColor={Colors.primary}
+          androidSrc={<VectorIcon family={Ionicons} name="home" />}
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="membership">
+        <Label>Plans</Label>
+        <Icon
+          sf={{ default: 'creditcard', selected: 'creditcard.fill' }}
+          selectedColor={Colors.primary}
+          androidSrc={<VectorIcon family={Ionicons} name="card" />}
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="store">
+        <Label>Store</Label>
+        <Icon
+          sf={{ default: 'bag', selected: 'bag.fill' }}
+          selectedColor={Colors.primary}
+          androidSrc={<VectorIcon family={Ionicons} name="bag" />}
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="booking">
+        <Label>Booking</Label>
+        <Icon
+          sf={{ default: 'book', selected: 'book.fill' }}
+          selectedColor={Colors.primary}
+          androidSrc={<VectorIcon family={Ionicons} name="book" />}
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="settings">
+        <Label>Settings</Label>
+        <Icon
+          sf={{ default: 'gearshape', selected: 'gearshape.fill' }}
+          selectedColor={Colors.primary}
+          androidSrc={<VectorIcon family={Ionicons} name="settings" />}
+        />
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }
 

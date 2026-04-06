@@ -14,6 +14,81 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+const appendQueryParams = (baseUrl, params) => {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  const query = new URLSearchParams(params).toString();
+  return `${baseUrl}${separator}${query}`;
+};
+
+const resolveGoogleAuth = async ({ googleId, email, fullname, profilePicture }) => {
+  if (!googleId || !email || !fullname) {
+    throw new Error('googleId, email, and fullname are required');
+  }
+
+  let user = await User.findOne({ $or: [{ googleId }, { email }] });
+
+  if (user) {
+    if (!user.googleId) {
+      user.googleId = googleId;
+      user.authProvider = 'google';
+      if (profilePicture) user.profilePicture = profilePicture;
+      await user.save();
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'your-secret-key', {
+      expiresIn: '7d',
+    });
+
+    return {
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        memberId: user.memberId,
+        username: user.username,
+        email: user.email,
+        fullname: user.fullname,
+        phone: user.phone,
+        age: user.age,
+        weight: user.weight,
+        profilePicture: user.profilePicture,
+        authProvider: user.authProvider,
+      },
+      isNewUser: false,
+    };
+  }
+
+  return {
+    success: true,
+    message: 'New user - proceed with onboarding',
+    isNewUser: true,
+    tempUser: {
+      googleId,
+      email,
+      fullname,
+      profilePicture,
+    },
+  };
+};
+
+const encodeState = (input) => {
+  return Buffer.from(JSON.stringify(input)).toString('base64url');
+};
+
+const decodeState = (encoded) => {
+  const raw = Buffer.from(encoded, 'base64url').toString('utf8');
+  return JSON.parse(raw);
+};
+
+const getGoogleMobileRedirectUri = (req) => {
+  const envRedirectUri = process.env.GOOGLE_MOBILE_REDIRECT_URI;
+  if (envRedirectUri) {
+    return envRedirectUri;
+  }
+  return `${req.protocol}://${req.get('host')}/api/auth/google/mobile/callback`;
+};
+
 exports.sendOTP = async (req, res) => {
   const { username, email, fullname, phone, password, age, weight } = req.body;
 
@@ -473,61 +548,129 @@ exports.googleAuth = async (req, res) => {
 
   try {
     console.log('Google Auth request:', { googleId, email, fullname });
-
-    // Check if user exists
-    let user = await User.findOne({ $or: [{ googleId }, { email }] });
-
-    if (user) {
-      // Existing user - login
-      console.log('Existing user found:', user.email);
-      
-      // If user email matches but no googleId, link the account
-      if (!user.googleId) {
-        user.googleId = googleId;
-        user.authProvider = 'google';
-        if (profilePicture) user.profilePicture = profilePicture;
-        await user.save();
-      }
-
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'your-secret-key', {
-        expiresIn: '7d'
-      });
-
-      res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        token,
-        user: {
-          id: user._id,
-          memberId: user.memberId,
-          username: user.username,
-          email: user.email,
-          fullname: user.fullname,
-          phone: user.phone,
-          age: user.age,
-          weight: user.weight,
-          profilePicture: user.profilePicture,
-          authProvider: user.authProvider
-        },
-        isNewUser: false
-      });
-    } else {
-      // New user - return info so frontend can proceed with onboarding
-      res.status(200).json({
-        success: true,
-        message: 'New user - proceed with onboarding',
-        isNewUser: true,
-        tempUser: {
-          googleId,
-          email,
-          fullname,
-          profilePicture
-        }
-      });
-    }
+    const result = await resolveGoogleAuth({ googleId, email, fullname, profilePicture });
+    res.status(200).json(result);
   } catch (err) {
     console.error('Google Auth Error:', err);
     res.status(500).json({ success: false, message: 'Google authentication failed' });
+  }
+};
+
+exports.initiateGoogleMobileAuth = async (req, res) => {
+  try {
+    const { deeplink } = req.query;
+    const appDeepLink =
+      typeof deeplink === 'string' && deeplink.length > 0
+        ? deeplink
+        : 'musclegarage://google-auth-callback';
+
+    const clientId = process.env.GOOGLE_WEB_CLIENT_ID || process.env.GOOGLE_CLIENT_ID_WEB;
+    if (!clientId) {
+      return res.status(500).json({ success: false, message: 'Google Web Client ID is not configured' });
+    }
+
+    const redirectUri = getGoogleMobileRedirectUri(req);
+    const state = encodeState({ deeplink: appDeepLink, ts: Date.now() });
+
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('scope', 'openid email profile');
+    authUrl.searchParams.set('access_type', 'offline');
+    authUrl.searchParams.set('prompt', 'consent');
+    authUrl.searchParams.set('state', state);
+
+    return res.redirect(302, authUrl.toString());
+  } catch (err) {
+    console.error('Initiate Google mobile auth error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to initiate Google authentication' });
+  }
+};
+
+exports.completeGoogleMobileAuth = async (req, res) => {
+  const { code, state } = req.query;
+
+  const fallbackDeepLink = 'musclegarage://google-auth-callback';
+  let appDeepLink = fallbackDeepLink;
+
+  try {
+    if (typeof state === 'string' && state.length > 0) {
+      const decoded = decodeState(state);
+      if (decoded?.deeplink) {
+        appDeepLink = decoded.deeplink;
+      }
+    }
+
+    if (!code || typeof code !== 'string') {
+      const target = appendQueryParams(appDeepLink, {
+        status: 'error',
+        message: 'Missing Google authorization code',
+      });
+      return res.redirect(302, target);
+    }
+
+    const clientId = process.env.GOOGLE_WEB_CLIENT_ID || process.env.GOOGLE_CLIENT_ID_WEB;
+    const clientSecret = process.env.GOOGLE_WEB_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      const target = appendQueryParams(appDeepLink, {
+        status: 'error',
+        message: 'Google credentials are not configured on server',
+      });
+      return res.redirect(302, target);
+    }
+
+    const redirectUri = getGoogleMobileRedirectUri(req);
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok || !tokenData.id_token) {
+      const target = appendQueryParams(appDeepLink, {
+        status: 'error',
+        message: tokenData.error_description || tokenData.error || 'Failed to exchange Google authorization code',
+      });
+      return res.redirect(302, target);
+    }
+
+    const userInfoResponse = await fetch('https://oauth2.googleapis.com/tokeninfo?' + new URLSearchParams({
+      id_token: tokenData.id_token,
+    }));
+    const userInfo = await userInfoResponse.json();
+
+    if (!userInfoResponse.ok || !userInfo.sub || !userInfo.email) {
+      const target = appendQueryParams(appDeepLink, {
+        status: 'error',
+        message: userInfo.error_description || userInfo.error || 'Failed to validate Google user profile',
+      });
+      return res.redirect(302, target);
+    }
+
+    const target = appendQueryParams(appDeepLink, {
+      status: 'success',
+      googleId: userInfo.sub,
+      email: userInfo.email,
+      fullname: userInfo.name || '',
+      profilePicture: userInfo.picture || '',
+    });
+
+    return res.redirect(302, target);
+  } catch (err) {
+    console.error('Complete Google mobile auth error:', err);
+    const target = appendQueryParams(appDeepLink, {
+      status: 'error',
+      message: err.message || 'Google authentication failed',
+    });
+    return res.redirect(302, target);
   }
 };
 

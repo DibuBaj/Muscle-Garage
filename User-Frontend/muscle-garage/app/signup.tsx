@@ -20,38 +20,20 @@ import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import PasswordStrengthIndicator from '@/components/password-strength-indicator';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import * as ExpoLinking from 'expo-linking';
+import { API_URL } from '@/constants/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Use appropriate Client ID based on platform
-const GOOGLE_CLIENT_ID = Platform.select({
-  web: '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com',  
-  ios: '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com',  
-  android: '532915510052-h9jt2k68422tq8eum7jop2fmb2qrivvc.apps.googleusercontent.com',
-}) as string;
-
 export default function SignupScreen() {
   const router = useRouter();
-  const { sendOTP, isAuthenticating, googleAuth, error: authError } = useAuth();
+  const { sendOTP, isAuthenticating, error: authError } = useAuth();
   const [step, setStep] = useState(1);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
   const [signupError, setSignupError] = useState('');
   const scrollViewRef = React.useRef<ScrollView>(null);
   const inputRefs = React.useRef<Record<string, View>>({});
-
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    scopes: ['profile', 'email'],
-  });
-
-  React.useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      handleGoogleSignup(authentication?.accessToken);
-    }
-  }, [response]);
   
   React.useEffect(() => {
     if (authError) {
@@ -173,49 +155,25 @@ export default function SignupScreen() {
     }
   };
 
-  const handleGoogleSignup = async (accessToken: string | undefined) => {
-    if (!accessToken) {
-      setGoogleError('Google authentication failed');
-      return;
-    }
-
+  const handleGoogleSignup = async () => {
     setGoogleLoading(true);
     setGoogleError('');
     try {
-      // Get user info from Google
-      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const appRedirectUrl = ExpoLinking.createURL('/google-auth-callback');
+      const authUrl = `${API_URL}/auth/google/mobile/initiate?deeplink=${encodeURIComponent(
+        appRedirectUrl
+      )}`;
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, appRedirectUrl);
 
-      if (!userInfoResponse.ok) {
-        throw new Error('Failed to fetch user info');
+      if (result.type === 'success' && result.url) {
+        await ExpoLinking.openURL(result.url);
+        return;
       }
 
-      const userInfo = await userInfoResponse.json();
-
-      // Use AuthContext to handle Google auth
-      const isNewUser = await googleAuth(
-        userInfo.id,
-        userInfo.email,
-        userInfo.name,
-        userInfo.picture
-      );
-
-      if (isNewUser) {
-        // Navigate to onboarding
-        router.push({
-          pathname: '/google-onboarding',
-          params: {
-            googleId: userInfo.id,
-            email: userInfo.email,
-            fullname: userInfo.name,
-            profilePicture: userInfo.picture,
-          },
-        });
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        setGoogleError('Google signup was cancelled.');
       } else {
-        // Login successful
-        setGoogleError('');
-        router.replace('/(tabs)');
+        setGoogleError('Google signup failed. Please try again.');
       }
     } catch (error: any) {
       console.error('Google signup error:', error);
@@ -319,9 +277,9 @@ export default function SignupScreen() {
         {/* Google Sign-Up Option - Always show */}
         <View style={styles.formContainer}>
           <TouchableOpacity
-            style={[styles.googleButton, (googleLoading || !request) && styles.buttonDisabled]}
-            onPress={() => promptAsync()}
-            disabled={googleLoading || !request}
+            style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
+            onPress={handleGoogleSignup}
+            disabled={googleLoading}
           >
             <View style={styles.googleButtonContent}>
               <Image

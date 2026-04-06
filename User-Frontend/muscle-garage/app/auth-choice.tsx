@@ -13,83 +13,43 @@ import {
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/context/AuthContext';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import * as ExpoLinking from 'expo-linking';
+import { API_URL } from '@/constants/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_ID_WEB = '532915510052-grjqv3364ei2bga6uk64g6u367oi5fji.apps.googleusercontent.com';
-const GOOGLE_ID_AND = '532915510052-h9jt2k68422tq8eum7jop2fmb2qrivvc.apps.googleusercontent.com';
-const GOOGLE_ID_IOS = '532915510052-f3084aca7ilq1jbdlk1keas8bdd3chub.apps.googleusercontent.com';
-
 export default function AuthChoiceScreen() {
   const router = useRouter();
-  const { googleAuth } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_ID_WEB,
-    androidClientId: GOOGLE_ID_AND,
-    iosClientId: GOOGLE_ID_IOS,
-    scopes: ['profile', 'email'],
-  });
-
   useEffect(() => {
-    if (response?.type === 'success') {
-      console.log('Google OAuth Success:', response);
-      const { authentication } = response;
-      if (authentication?.accessToken) {
-        handleGoogleLogin(authentication.accessToken);
-      }
-    } else if (response?.type === 'error') {
-      console.error('Google OAuth Error:', response.error);
-      setErrorMessage('Google login cancelled or failed');
+    return () => {
       setLoading(false);
-    }
-  }, [response]);
+    };
+  }, []);
 
-  const handleGoogleLogin = async (accessToken: string | undefined) => {
-    if (!accessToken) {
-      setErrorMessage('Google authentication failed');
-      return;
-    }
+  const handleGoogleLogin = async () => {
 
     setLoading(true);
+    setErrorMessage('');
     try {
-      const userInfoResponse = await fetch(
-        'https://www.googleapis.com/oauth2/v2/userinfo',
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
+      const appRedirectUrl = ExpoLinking.createURL('/google-auth-callback');
+      const authUrl = `${API_URL}/auth/google/mobile/initiate?deeplink=${encodeURIComponent(
+        appRedirectUrl
+      )}`;
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, appRedirectUrl);
 
-      if (!userInfoResponse.ok) throw new Error('Failed to fetch user info');
+      if (result.type === 'success' && result.url) {
+        await ExpoLinking.openURL(result.url);
+        return;
+      }
 
-      const userInfo = await userInfoResponse.json();
-
-      // AuthContext to handle login/signup
-      const isNewUser = await googleAuth(
-        userInfo.id,
-        userInfo.email,
-        userInfo.name,
-        userInfo.picture
-      );
-
-      if (isNewUser) {
-        router.push({
-          pathname: '/google-onboarding',
-          params: {
-            googleId: userInfo.id,
-            email: userInfo.email,
-            fullname: userInfo.name,
-            profilePicture: userInfo.picture,
-          },
-        });
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        setErrorMessage('Google login was cancelled.');
       } else {
-        setErrorMessage('');
-        router.replace('/(tabs)');
+        setErrorMessage('Google login failed. Please try again.');
       }
     } catch (error: any) {
       console.error('Google login error:', error);
@@ -133,8 +93,8 @@ export default function AuthChoiceScreen() {
             {/* Google */}
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => promptAsync()}
-              disabled={loading || !request}
+              onPress={handleGoogleLogin}
+              disabled={loading}
             >
               <View style={styles.buttonContent}>
                 <Image
