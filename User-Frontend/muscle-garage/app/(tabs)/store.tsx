@@ -70,6 +70,7 @@ const StoreScreen = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<Product | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -195,6 +196,15 @@ const StoreScreen = () => {
     } finally {
       if (showLoader) setOrdersLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchProducts();
+    if (auth.user) {
+      await fetchOrders(false);
+    }
+    setRefreshing(false);
   };
 
   useEffect(() => {
@@ -359,36 +369,59 @@ const StoreScreen = () => {
     try {
       setPlacing(true);
       const appRedirectUrl = ExpoLinking.createURL('/payment-callback');
-      const res = await fetch(`${API_URL}/orders/khalti/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: checkout.name.trim(),
-          email: checkout.email.trim(),
-          phone: checkout.phone.trim(),
-          location: `Ward ${checkout.ward}, ${checkout.municipality}, ${checkout.district}, ${checkout.province}`,
-          address: checkout.address.trim(),
-          products: cart.map((i) => ({ productId: i._id, quantity: i.quantity })),
-          returnUrl: `${API_URL}/payment/khalti/redirect?deeplink=${encodeURIComponent(appRedirectUrl)}`,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.paymentUrl) {
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.paymentUrl,
-          appRedirectUrl
-        );
+      const payload = {
+        customerName: checkout.name.trim(),
+        email: checkout.email.trim(),
+        phone: checkout.phone.trim(),
+        location: `Ward ${checkout.ward}, ${checkout.municipality}, ${checkout.district}, ${checkout.province}`,
+        address: checkout.address.trim(),
+        paymentMethod: checkout.paymentMethod,
+        products: cart.map((i) => ({ productId: i._id, quantity: i.quantity })),
+      };
 
-        if (result.type === 'success' && result.url) {
-          // Close checkout popup before handling payment callback redirect.
-          setCheckoutOpen(false);
-          setCart([]);
-          await ExpoLinking.openURL(result.url);
-        } else if (result.type === 'cancel' || result.type === 'dismiss') {
-          showToast('Payment was cancelled');
+      if (checkout.paymentMethod === 'Online') {
+        const res = await fetch(`${API_URL}/orders/khalti/initiate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            returnUrl: `${API_URL}/payment/khalti/redirect?deeplink=${encodeURIComponent(appRedirectUrl)}`,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.paymentUrl) {
+          const result = await WebBrowser.openAuthSessionAsync(
+            data.paymentUrl,
+            appRedirectUrl
+          );
+
+          if (result.type === 'success' && result.url) {
+            // Close checkout popup before handling payment callback redirect.
+            setCheckoutOpen(false);
+            setCart([]);
+            await ExpoLinking.openURL(result.url);
+          } else if (result.type === 'cancel' || result.type === 'dismiss') {
+            showToast('Payment was cancelled');
+          }
+        } else {
+          showToast(data.message || 'Failed to place order');
         }
       } else {
-        showToast(data.message || 'Failed to place order');
+        const res = await fetch(`${API_URL}/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (data.success && data.order) {
+          setCheckoutOpen(false);
+          setCart([]);
+          setConfirmation({ order: data.order });
+          fetchOrders(false);
+        } else {
+          showToast(data.message || 'Failed to place order');
+        }
       }
     } catch (e: any) {
       showToast('Error placing order');
@@ -812,10 +845,22 @@ const StoreScreen = () => {
 
             <Label text="Payment Method" />
             <View style={styles.paymentOptions}>
-              <View style={[styles.paymentOption, styles.paymentOptionActive]}>
-                <View style={[styles.radio, styles.radioActive]} />
-                <Text style={styles.paymentText}>Khalti</Text>
-              </View>
+              <TouchableOpacity
+                style={[styles.paymentOption, checkout.paymentMethod === 'Online' && styles.paymentOptionActive]}
+                onPress={() => setCheckout({ ...checkout, paymentMethod: 'Online' })}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.radio, checkout.paymentMethod === 'Online' && styles.radioActive]} />
+                <Text style={styles.paymentText}>Online</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.paymentOption, checkout.paymentMethod === 'Cash on Delivery' && styles.paymentOptionActive]}
+                onPress={() => setCheckout({ ...checkout, paymentMethod: 'Cash on Delivery' })}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.radio, checkout.paymentMethod === 'Cash on Delivery' && styles.radioActive]} />
+                <Text style={styles.paymentText}>Cash on Delivery</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.orderSummary}>
@@ -1078,6 +1123,8 @@ const StoreScreen = () => {
           numColumns={2}
           onScroll={scrollHandler}
           scrollEventThrottle={16}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           style={styles.gridList}
           columnWrapperStyle={styles.gridWrapper}
           contentContainerStyle={styles.gridContent}

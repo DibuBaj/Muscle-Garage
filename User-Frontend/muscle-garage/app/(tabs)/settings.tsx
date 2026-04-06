@@ -11,6 +11,7 @@ import {
   Alert,
   SafeAreaView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -41,6 +42,7 @@ export default function SettingsScreen() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -121,6 +123,12 @@ export default function SettingsScreen() {
     } finally {
       setProfileLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchUserProfile();
+    setRefreshing(false);
   };
 
   const handleUpdateProfile = async () => {
@@ -358,6 +366,9 @@ export default function SettingsScreen() {
           scrollEventThrottle={16}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+          }
         >
           <View style={styles.header}>
             <Text style={styles.title}>Settings</Text>

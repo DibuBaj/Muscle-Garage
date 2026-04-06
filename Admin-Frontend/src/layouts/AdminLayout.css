@@ -1,21 +1,31 @@
 .admin-layout {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   min-height: 100vh;
   background-color: var(--background-color);
+  overflow: hidden;
 }
 
 .admin-main {
   display: flex;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 .admin-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 32px;
   background-color: #f9f9f9;
+}
+
+.admin-main .sidebar {
+  height: 100%;
+  flex-shrink: 0;
 }
 
 /* Scrollbar styling */

@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ExpoLinking from 'expo-linking';
@@ -56,6 +57,7 @@ export default function MembershipScreen() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [pauseModalVisible, setPauseModalVisible] = useState(false);
@@ -110,6 +112,12 @@ export default function MembershipScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchPlans(), fetchSubscription()]);
+    setRefreshing(false);
   };
 
   const handleSubscribe = async () => {
@@ -224,6 +232,9 @@ export default function MembershipScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>

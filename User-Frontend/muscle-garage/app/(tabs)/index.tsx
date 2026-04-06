@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, RefreshControl } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -40,6 +40,9 @@ interface Booking {
   trainerName?: string;
   sessionName?: string;
   subtitle?: string;
+  sessionType?: string;
+  sessionTime?: string;
+  sessionRate?: number;
   startDate?: string;
   bookedAt?: string;
   endDate?: string;
@@ -64,6 +67,7 @@ export default function DashboardScreen() {
   const [sessionBookings, setSessionBookings] = useState<Booking[]>([]);
   const [trainerBookings, setTrainerBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollHandler = useLiquidTabBarScrollHandler();
 
   useEffect(() => {
@@ -146,6 +150,12 @@ export default function DashboardScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+  };
+
   const handleMembershipPress = () => {
     router.push('/(tabs)/membership');
   };
@@ -182,6 +192,9 @@ export default function DashboardScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+        }
       >
         <View style={styles.header}>
           <View>

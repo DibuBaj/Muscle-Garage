@@ -10,6 +10,7 @@ import {
   Image,
   SafeAreaView,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -71,6 +72,7 @@ export default function BookingScreen() {
   const [error, setError] = useState('');
   const [activeBookings, setActiveBookings] = useState<ActiveBooking[]>([]);
   const [bookedIds, setBookedIds] = useState<Set<string>>(new Set()); // Track booked item IDs
+  const [refreshing, setRefreshing] = useState(false);
 
   // Modal states
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
@@ -240,6 +242,12 @@ export default function BookingScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
+
   const handleTrainerClick = (trainer: Trainer) => {
     setSelectedTrainer(trainer);
     setShowTrainerModal(true);
@@ -349,6 +357,9 @@ export default function BookingScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>

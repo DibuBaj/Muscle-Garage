@@ -76,7 +76,7 @@ const createOrderFromPayload = async (payload) => {
     location: payload.location,
     products: orderItems,
     status: 'Unfulfilled',
-    paymentMethod: 'Online',
+    paymentMethod: payload.paymentMethod || 'Online',
     orderTotal: payload.orderTotal,
     shippingCost: payload.shippingCost,
   });
@@ -84,10 +84,48 @@ const createOrderFromPayload = async (payload) => {
 
 // User: create order
 exports.createOrder = async (req, res) => {
-  return res.status(410).json({
-    success: false,
-    message: 'Direct order creation is disabled. Use Khalti payment endpoints.',
-  });
+  try {
+    const {
+      customerName,
+      phone,
+      email,
+      location,
+      products = [],
+      paymentMethod,
+    } = req.body;
+
+    if (!customerName || !phone || !email || !location || !products.length) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    if (paymentMethod !== 'Cash on Delivery') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only Cash on Delivery is supported via direct order endpoint',
+      });
+    }
+
+    const summary = await buildOrderSummary(products);
+    const order = await createOrderFromPayload({
+      customerName,
+      phone,
+      email,
+      location,
+      orderItems: summary.orderItems,
+      orderTotal: summary.orderTotal,
+      shippingCost: summary.shippingCost,
+      paymentMethod: 'Cash on Delivery',
+    });
+
+    return res.status(201).json({ success: true, order });
+  } catch (err) {
+    console.error('Create order error:', err);
+    const isKnown = err.message?.includes('Product not found') || err.message?.includes('out of stock') || err.message?.includes('required');
+    return res.status(isKnown ? 400 : 500).json({
+      success: false,
+      message: err.message || 'Failed to create order',
+    });
+  }
 };
 
 exports.initiateKhaltiOrder = async (req, res) => {
