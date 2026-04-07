@@ -3,6 +3,7 @@ const Subscription = require('../models/Subscription');
 const bcrypt = require('bcryptjs');
 const cloudinary = require('../config/cloudinary');
 const multer = require('multer');
+const { parseAndCalculateAge } = require('../utils/age');
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
@@ -40,7 +41,7 @@ exports.getUserProfile = async (req, res) => {
         email: user.email,
         fullname: user.fullname,
         phone: user.phone,
-        age: user.age,
+        dateOfBirth: user.dateOfBirth,
         weight: user.weight,
         profilePicture: user.profilePicture,
         authProvider: user.authProvider,
@@ -54,7 +55,7 @@ exports.getUserProfile = async (req, res) => {
 
 // Update user profile
 exports.updateUserProfile = async (req, res) => {
-  const { fullname, email, phone, username, age, weight } = req.body;
+  const { fullname, email, phone, username, dateOfBirth, weight } = req.body;
 
   try {
     // Validate required fields
@@ -91,12 +92,20 @@ exports.updateUserProfile = async (req, res) => {
       });
     }
 
+    const dobData = parseAndCalculateAge(dateOfBirth);
+    if (dobData.error) {
+      return res.status(400).json({
+        success: false,
+        message: dobData.error,
+      });
+    }
+
     const updateData = {
       fullname,
       email,
       phone,
       username,
-      age: age || null,
+      dateOfBirth: dobData.dateOfBirth,
       weight: weight || null,
     };
 
@@ -123,7 +132,7 @@ exports.updateUserProfile = async (req, res) => {
         email: user.email,
         fullname: user.fullname,
         phone: user.phone,
-        age: user.age,
+        dateOfBirth: user.dateOfBirth,
         weight: user.weight,
         profilePicture: user.profilePicture,
       }

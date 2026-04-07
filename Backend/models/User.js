@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: false },
   fullname: { type: String, required: true },
   password: { type: String, required: false },
-  age: { type: Number, required: false },
+  dateOfBirth: { type: Date, required: false },
   weight: { type: Number, required: false },
   authProvider: { type: String, enum: ['email', 'google'], default: 'email' },
   googleId: { type: String, required: false, unique: true, sparse: true },

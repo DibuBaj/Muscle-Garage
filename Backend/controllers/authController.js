@@ -1,96 +1,21 @@
 const User = require('../models/User');
-const Counter = require('../models/Counter');
 const OTP = require('../models/OTP');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendOTPEmail } = require('../config/email');
-
-const generateMemberId = async () => {
-  const seq = await Counter.getNextSequence('memberId');
-  return `MG${String(seq).padStart(5, '0')}`;
-};
-
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-const appendQueryParams = (baseUrl, params) => {
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  const query = new URLSearchParams(params).toString();
-  return `${baseUrl}${separator}${query}`;
-};
-
-const resolveGoogleAuth = async ({ googleId, email, fullname, profilePicture }) => {
-  if (!googleId || !email || !fullname) {
-    throw new Error('googleId, email, and fullname are required');
-  }
-
-  let user = await User.findOne({ $or: [{ googleId }, { email }] });
-
-  if (user) {
-    if (!user.googleId) {
-      user.googleId = googleId;
-      user.authProvider = 'google';
-      if (profilePicture) user.profilePicture = profilePicture;
-      await user.save();
-    }
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'your-secret-key', {
-      expiresIn: '7d',
-    });
-
-    return {
-      success: true,
-      message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        memberId: user.memberId,
-        username: user.username,
-        email: user.email,
-        fullname: user.fullname,
-        phone: user.phone,
-        age: user.age,
-        weight: user.weight,
-        profilePicture: user.profilePicture,
-        authProvider: user.authProvider,
-      },
-      isNewUser: false,
-    };
-  }
-
-  return {
-    success: true,
-    message: 'New user - proceed with onboarding',
-    isNewUser: true,
-    tempUser: {
-      googleId,
-      email,
-      fullname,
-      profilePicture,
-    },
-  };
-};
-
-const encodeState = (input) => {
-  return Buffer.from(JSON.stringify(input)).toString('base64url');
-};
-
-const decodeState = (encoded) => {
-  const raw = Buffer.from(encoded, 'base64url').toString('utf8');
-  return JSON.parse(raw);
-};
-
-const getGoogleMobileRedirectUri = (req) => {
-  const envRedirectUri = process.env.GOOGLE_MOBILE_REDIRECT_URI;
-  if (envRedirectUri) {
-    return envRedirectUri;
-  }
-  return `${req.protocol}://${req.get('host')}/api/auth/google/mobile/callback`;
-};
+const { parseAndCalculateAge } = require('../utils/age');
+const {
+  appendQueryParams,
+  decodeState,
+  encodeState,
+  generateMemberId,
+  generateOTP,
+  getGoogleMobileRedirectUri,
+  resolveGoogleAuth,
+} = require('../utils/authHelpers');
 
 exports.sendOTP = async (req, res) => {
-  const { username, email, fullname, phone, password, age, weight } = req.body;
+  const { username, email, fullname, phone, password, dateOfBirth, age, weight } = req.body;
 
   try {
     // Validate required fields
@@ -123,6 +48,11 @@ exports.sendOTP = async (req, res) => {
       }
     }
 
+    const dobData = parseAndCalculateAge(dateOfBirth);
+    if (dobData.error) {
+      return res.status(400).json({ message: dobData.error });
+    }
+
     await OTP.deleteMany({ email });
 
     const otp = generateOTP();
@@ -136,7 +66,7 @@ exports.sendOTP = async (req, res) => {
         fullname,
         phone,
         password: hashedPassword,
-        age: age || null,
+        dateOfBirth: dobData.dateOfBirth,
         weight: weight || null
       }
     });
@@ -192,7 +122,7 @@ exports.verifyOTP = async (req, res) => {
       user.username = otpDoc.userData.username;
       user.fullname = otpDoc.userData.fullname;
       user.password = otpDoc.userData.password;
-      user.age = otpDoc.userData.age;
+      user.dateOfBirth = otpDoc.userData.dateOfBirth || user.dateOfBirth;
       user.phone = otpDoc.userData.phone || user.phone;
       user.weight = otpDoc.userData.weight || null;
       user.isMobileUser = true;
@@ -207,7 +137,7 @@ exports.verifyOTP = async (req, res) => {
         email,
         fullname: otpDoc.userData.fullname,
         password: otpDoc.userData.password,
-        age: otpDoc.userData.age
+        dateOfBirth: otpDoc.userData.dateOfBirth || null
       };
 
       if (otpDoc.userData.phone) {
@@ -239,7 +169,7 @@ exports.verifyOTP = async (req, res) => {
         email: user.email,
         phone: user.phone,
         fullname: user.fullname,
-        age: user.age,
+        dateOfBirth: user.dateOfBirth,
         weight: user.weight,
         createdAt: user.createdAt
       }
@@ -293,9 +223,14 @@ exports.resendOTP = async (req, res) => {
 };
 
 exports.signup = async (req, res) => {
-  const { username, email, fullname, password, age, weight } = req.body;
+  const { username, email, fullname, password, dateOfBirth, age, weight } = req.body;
 
   try {
+    const dobData = parseAndCalculateAge(dateOfBirth);
+    if (dobData.error) {
+      return res.status(400).json({ message: dobData.error });
+    }
+
     let user = await User.findOne({ email });
     
     if (user) {
@@ -312,7 +247,7 @@ exports.signup = async (req, res) => {
         
         // Update other fields if provided
         if (fullname) user.fullname = fullname;
-        if (age) user.age = age;
+        if (dobData.dateOfBirth) user.dateOfBirth = dobData.dateOfBirth;
         if (weight) user.weight = weight;
         
         // Note: Don't update email or phone as email is the identifier
@@ -330,7 +265,7 @@ exports.signup = async (req, res) => {
             email: user.email,
             phone: user.phone,
             fullname: user.fullname,
-            age: user.age,
+            dateOfBirth: user.dateOfBirth,
             weight: user.weight,
             createdAt: user.createdAt
           },
@@ -353,7 +288,15 @@ exports.signup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const memberId = await generateMemberId();
 
-    const userData = { memberId, username, email, fullname, password: hashedPassword, age, isMobileUser: true };
+    const userData = {
+      memberId,
+      username,
+      email,
+      fullname,
+      password: hashedPassword,
+      dateOfBirth: dobData.dateOfBirth,
+      isMobileUser: true,
+    };
     if (weight) userData.weight = weight;
 
     user = new User(userData);
@@ -370,7 +313,7 @@ exports.signup = async (req, res) => {
         email: user.email,
         phone: user.phone,
         fullname: user.fullname,
-        age: user.age,
+        dateOfBirth: user.dateOfBirth,
         weight: user.weight,
         createdAt: user.createdAt
       } 
@@ -402,7 +345,7 @@ exports.login = async (req, res) => {
         email: user.email,
         phone: user.phone,
         fullname: user.fullname,
-        age: user.age,
+        dateOfBirth: user.dateOfBirth,
         weight: user.weight,
         createdAt: user.createdAt
       } 
@@ -675,10 +618,15 @@ exports.completeGoogleMobileAuth = async (req, res) => {
 };
 
 exports.completeGoogleOnboarding = async (req, res) => {
-  const { googleId, email, fullname, profilePicture, username, phone, age, weight } = req.body;
+  const { googleId, email, fullname, profilePicture, username, phone, dateOfBirth, age, weight } = req.body;
 
   try {
     console.log('Completing Google onboarding for:', email);
+
+    const dobData = parseAndCalculateAge(dateOfBirth);
+    if (dobData.error) {
+      return res.status(400).json({ success: false, message: dobData.error });
+    }
 
     // Check if username already exists
     const existingUser = await User.findOne({ username });
@@ -696,7 +644,7 @@ exports.completeGoogleOnboarding = async (req, res) => {
       email,
       fullname,
       phone,
-      age: age || null,
+      dateOfBirth: dobData.dateOfBirth,
       weight: weight || null,
       googleId,
       profilePicture,
@@ -722,7 +670,7 @@ exports.completeGoogleOnboarding = async (req, res) => {
         email: newUser.email,
         fullname: newUser.fullname,
         phone: newUser.phone,
-        age: newUser.age,
+        dateOfBirth: newUser.dateOfBirth,
         weight: newUser.weight,
         profilePicture: newUser.profilePicture,
         authProvider: newUser.authProvider
