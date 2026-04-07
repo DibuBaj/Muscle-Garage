@@ -13,21 +13,28 @@ const {
 } = require('../controllers/trainerController');
 const adminMiddleware = require('../middleware/adminMiddleware');
 
-// Configure multer for disk storage (for certificate uploads)
-const uploadDir = path.join('uploads', 'trainer-certificates');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Vercel/serverless file system is read-only. Use in-memory uploads there.
+const isServerless = !!process.env.VERCEL || process.env.NODE_ENV === 'production';
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+let storage;
+if (isServerless) {
+  storage = multer.memoryStorage();
+} else {
+  const uploadDir = path.join('uploads', 'trainer-certificates');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
   }
-});
+
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+}
 
 const upload = multer({
   storage: storage,

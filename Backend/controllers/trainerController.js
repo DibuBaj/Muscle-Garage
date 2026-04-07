@@ -3,6 +3,29 @@ const Booking = require('../models/Booking');
 const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 
+const uploadTrainerCertification = async (file) => {
+  if (!file) return null;
+
+  const uploadInput = file.path
+    ? file.path
+    : `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+
+  const result = await cloudinary.uploader.upload(uploadInput, {
+    folder: 'trainers/certifications',
+    resource_type: 'auto'
+  });
+
+  const certificateUrl = result.secure_url || result.url;
+  if (!certificateUrl) {
+    throw new Error('No URL returned from Cloudinary upload');
+  }
+
+  return {
+    url: certificateUrl,
+    publicId: result.public_id
+  };
+};
+
 // Get all trainers
 exports.getAllTrainers = async (req, res) => {
   try {
@@ -67,34 +90,11 @@ exports.createTrainer = async (req, res) => {
     // Handle certificate upload if file exists
     if (req.file) {
       try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'trainers/certifications',
-          resource_type: 'auto'
-        });
-        
-        console.log('=== CLOUDINARY UPLOAD RESPONSE ===');
-        console.log('Full result object:', JSON.stringify(result, null, 2));
-        console.log('secure_url:', result.secure_url);
-        console.log('url:', result.url);
-        console.log('public_id:', result.public_id);
-        console.log('================================');
-        
-        // Use secure_url as the primary option, fallback to url if not available
-        const certificateUrl = result.secure_url || result.url;
-        
-        if (!certificateUrl) {
-          throw new Error('No URL returned from Cloudinary upload');
-        }
-        
-        certificationData = {
-          url: certificateUrl,
-          publicId: result.public_id
-        };
-        
+        certificationData = await uploadTrainerCertification(req.file);
         console.log('Storing certificate data:', certificationData);
         
         // Delete local file after upload
-        if (fs.existsSync(req.file.path)) {
+        if (req.file.path && fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
       } catch (uploadErr) {
@@ -132,7 +132,7 @@ exports.createTrainer = async (req, res) => {
   } catch (err) {
     console.error('Create trainer error:', err);
     // Clean up uploaded file if error occurs
-    if (req.file && fs.existsSync(req.file.path)) {
+    if (req.file?.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
     res.status(500).json({
@@ -182,34 +182,12 @@ exports.updateTrainer = async (req, res) => {
         }
 
         // Upload new certificate
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'trainers/certifications',
-          resource_type: 'auto'
-        });
-        
-        console.log('=== CLOUDINARY UPDATE RESPONSE ===');
-        console.log('Full result object:', JSON.stringify(result, null, 2));
-        console.log('secure_url:', result.secure_url);
-        console.log('url:', result.url);
-        console.log('public_id:', result.public_id);
-        console.log('===================================');
-        
-        // Use secure_url as the primary option, fallback to url if not available
-        const certificateUrl = result.secure_url || result.url;
-        
-        if (!certificateUrl) {
-          throw new Error('No URL returned from Cloudinary upload');
-        }
-        
-        trainer.certification = {
-          url: certificateUrl,
-          publicId: result.public_id
-        };
+        trainer.certification = await uploadTrainerCertification(req.file);
         
         console.log('Storing updated certificate data:', trainer.certification);
         
         // Delete local file
-        if (fs.existsSync(req.file.path)) {
+        if (req.file.path && fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
       } catch (uploadErr) {
@@ -249,7 +227,7 @@ exports.updateTrainer = async (req, res) => {
   } catch (err) {
     console.error('Update trainer error:', err);
     // Clean up uploaded file if error occurs
-    if (req.file && fs.existsSync(req.file.path)) {
+    if (req.file?.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
     res.status(500).json({
