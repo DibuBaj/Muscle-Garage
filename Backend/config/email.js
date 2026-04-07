@@ -71,4 +71,115 @@ const sendOTPEmail = async (email, otp) => {
     }
 };
 
-module.exports = { sendOTPEmail };
+const formatMoney = (amount = 0) => `NPR ${Number(amount || 0).toFixed(2)}`;
+
+const buildOrderDetailsHtml = (order) => {
+    const rows = (order.products || [])
+        .map((item) => {
+            const quantity = Number(item.quantity || 0);
+            const unitPrice = Number(item.priceAtPurchase || 0);
+            const lineTotal = quantity * unitPrice;
+            return `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e5e5;">${item.productName}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: center;">${quantity}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right;">${formatMoney(unitPrice)}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right;">${formatMoney(lineTotal)}</td>
+                </tr>
+            `;
+        })
+        .join('');
+
+    const subtotal = Number(order.orderTotal || 0);
+    const shipping = Number(order.shippingCost || 0);
+    const grandTotal = subtotal + shipping;
+
+    return `
+        <div style="margin: 24px 0;">
+            <p style="margin: 6px 0;"><strong>Order ID:</strong> ${order._id}</p>
+            <p style="margin: 6px 0;"><strong>Customer:</strong> ${order.customerName}</p>
+            <p style="margin: 6px 0;"><strong>Phone:</strong> ${order.phone}</p>
+            <p style="margin: 6px 0;"><strong>Delivery Address:</strong> ${order.location}</p>
+            <p style="margin: 6px 0;"><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+            <p style="margin: 6px 0;"><strong>Current Status:</strong> ${order.status}</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin: 10px 0 20px;">
+            <thead>
+                <tr style="background-color: #f7f7f7;">
+                    <th style="padding: 10px; text-align: left; border-bottom: 1px solid #e5e5e5;">Item</th>
+                    <th style="padding: 10px; text-align: center; border-bottom: 1px solid #e5e5e5;">Qty</th>
+                    <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e5e5e5;">Unit Price</th>
+                    <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e5e5e5;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+        <div style="text-align: right;">
+            <p style="margin: 6px 0;"><strong>Subtotal:</strong> ${formatMoney(subtotal)}</p>
+            <p style="margin: 6px 0;"><strong>Shipping:</strong> ${formatMoney(shipping)}</p>
+            <p style="margin: 6px 0; font-size: 18px;"><strong>Grand Total:</strong> ${formatMoney(grandTotal)}</p>
+        </div>
+    `;
+};
+
+const sendOrderPlacedEmail = async (order) => {
+    const mailOptions = {
+        from: process.env.EMAIL_ADMIN,
+        to: order.email,
+        subject: `Muscle Garage - Order Placed (#${order._id})`,
+        html: `
+            <div style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 700px; margin: 0 auto; background-color: #ffffff; padding: 24px; color: #111111;">
+                <h2 style="margin-bottom: 8px;">Your order has been placed</h2>
+                <p style="margin-top: 0; color: #444444;">Thank you for ordering from Muscle Garage. We have received your order and will process it shortly.</p>
+                ${buildOrderDetailsHtml(order)}
+                <p style="margin-top: 24px; color: #666666; font-size: 13px;">Need help? Reply to this email and our team will assist you.</p>
+            </div>
+        `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    return true;
+};
+
+const sendOrderStatusEmail = async (order) => {
+    if (!order || !order.email) {
+        return false;
+    }
+
+    let heading = '';
+    let body = '';
+    let subject = '';
+
+    if (order.status === 'In Progress') {
+        subject = `Muscle Garage - Order In Progress (#${order._id})`;
+        heading = 'Your order is on the way';
+        body = `Your order ${order._id} is now in progress and on the way.`;
+    } else if (order.status === 'Fulfilled') {
+        subject = `Muscle Garage - Order Delivered (#${order._id})`;
+        heading = 'Your order has been delivered';
+        body = `Your order ${order._id} has been delivered successfully.`;
+    } else {
+        return false;
+    }
+
+    const mailOptions = {
+        from: process.env.EMAIL_ADMIN,
+        to: order.email,
+        subject,
+        html: `
+            <div style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 700px; margin: 0 auto; background-color: #ffffff; padding: 24px; color: #111111;">
+                <h2 style="margin-bottom: 8px;">${heading}</h2>
+                <p style="margin-top: 0; color: #444444;">${body}</p>
+                ${buildOrderDetailsHtml(order)}
+                <p style="margin-top: 24px; color: #666666; font-size: 13px;">Thank you for choosing Muscle Garage.</p>
+            </div>
+        `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    return true;
+};
+
+module.exports = { sendOTPEmail, sendOrderPlacedEmail, sendOrderStatusEmail };

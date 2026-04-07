@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const PaymentIntent = require('../models/PaymentIntent');
+const { sendOrderPlacedEmail, sendOrderStatusEmail } = require('../config/email');
 const { initiateKhaltiPayment, lookupKhaltiPayment } = require('../utils/khalti');
 const { randomUUID } = require('crypto');
 
@@ -82,6 +83,22 @@ const createOrderFromPayload = async (payload) => {
   });
 };
 
+const safelySendOrderPlacedEmail = async (order) => {
+  try {
+    await sendOrderPlacedEmail(order);
+  } catch (error) {
+    console.error('Order placed email failed:', error.message);
+  }
+};
+
+const safelySendOrderStatusEmail = async (order) => {
+  try {
+    await sendOrderStatusEmail(order);
+  } catch (error) {
+    console.error('Order status email failed:', error.message);
+  }
+};
+
 // User: create order
 exports.createOrder = async (req, res) => {
   try {
@@ -116,6 +133,8 @@ exports.createOrder = async (req, res) => {
       shippingCost: summary.shippingCost,
       paymentMethod: 'Cash on Delivery',
     });
+
+    await safelySendOrderPlacedEmail(order);
 
     return res.status(201).json({ success: true, order });
   } catch (err) {
@@ -234,6 +253,8 @@ exports.completeKhaltiOrder = async (req, res) => {
 
     const order = await createOrderFromPayload(intent.payload);
 
+    await safelySendOrderPlacedEmail(order);
+
     intent.status = 'consumed';
     intent.khaltiResponse = lookup;
     await intent.save();
@@ -282,12 +303,18 @@ exports.updateOrderStatus = async (req, res) => {
     if (!['Unfulfilled', 'In Progress', 'Fulfilled'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
-    const order = await Order.findByIdAndUpdate(
-      req.params.orderId,
-      { status },
-      { new: true }
-    );
+
+    const order = await Order.findById(req.params.orderId);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    const previousStatus = order.status;
+    order.status = status;
+    await order.save();
+
+    if (previousStatus !== status && (status === 'In Progress' || status === 'Fulfilled')) {
+      await safelySendOrderStatusEmail(order);
+    }
+
     res.json({ success: true, order });
   } catch (err) {
     console.error('Update order status error:', err);

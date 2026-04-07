@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, TextInput, Animated, StyleSheet, ActivityIndicator, Modal, SafeAreaView, PanResponder, BackHandler } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +43,7 @@ const StoreScreen = () => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [historyBadgeCount, setHistoryBadgeCount] = useState(0);
+  const hasLoadedOrdersSnapshotRef = useRef(false);
   const knownOrderStatusesRef = useRef<Record<string, Order['status']>>({});
   const detailFadeAnim = useRef(new Animated.Value(1)).current;
   const sanitizePhone = (value: string) => value.replace(/\D/g, '');
@@ -113,22 +114,27 @@ const StoreScreen = () => {
       if (data.success) {
         const incomingOrders: Order[] = data.orders || [];
         const nextStatuses: Record<string, Order['status']> = {};
-        const hadPreviousSnapshot = Object.keys(knownOrderStatusesRef.current).length > 0;
+        const hadPreviousSnapshot = hasLoadedOrdersSnapshotRef.current;
         let newEntityCount = 0;
+        let statusChangeCount = 0;
 
         incomingOrders.forEach((order) => {
           nextStatuses[order._id] = order.status;
           const previousStatus = knownOrderStatusesRef.current[order._id];
           if (!previousStatus) {
             newEntityCount += 1;
+          } else if (previousStatus !== order.status) {
+            statusChangeCount += 1;
           }
         });
 
         knownOrderStatusesRef.current = nextStatuses;
+        hasLoadedOrdersSnapshotRef.current = true;
         setOrders(incomingOrders);
 
-        if (hadPreviousSnapshot && newEntityCount > 0 && !orderHistoryOpen) {
-          setHistoryBadgeCount((prev) => prev + newEntityCount);
+        const nextBadgeIncrement = newEntityCount + statusChangeCount;
+        if (hadPreviousSnapshot && nextBadgeIncrement > 0 && !orderHistoryOpen) {
+          setHistoryBadgeCount((prev) => prev + nextBadgeIncrement);
         }
       }
     } catch (e: any) {
@@ -1203,8 +1209,8 @@ const styles = StyleSheet.create({
   headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: { padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#333', position: 'relative' },
   historyUpdateDot: { position: 'absolute', top: 4, right: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ff9800', borderWidth: 1, borderColor: '#111' },
-  cartBadge: { position: 'absolute', top: -6, right: -6, backgroundColor: Colors.primary, borderRadius: 99, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
-  cartBadgeText: { color: '#000', fontWeight: '800', fontSize: 11, fontFamily: 'Poppins' },
+  cartBadge: { position: 'absolute', top: -6, right: -6, backgroundColor: Colors.primary, borderRadius: 99, minWidth: 20, height: 20, paddingHorizontal: 5, justifyContent: 'center', alignItems: 'center' },
+  cartBadgeText: { color: '#000', fontWeight: '800', fontSize: 11, lineHeight: 12, fontFamily: 'Poppins' },
   
   categoryScroll: { marginBottom: 12, flexGrow: 0, minHeight: 38 },
   categoryScrollContent: { paddingHorizontal: 20, alignItems: 'center' },
