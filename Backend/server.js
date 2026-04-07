@@ -24,11 +24,26 @@ if (process.env.NODE_ENV !== 'production') {
 
 const app = express();
 
-connectDB();
+connectDB().catch((err) => {
+  console.error('Initial DB connection failed:', err.message);
+});
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB unavailable for request:', err.message);
+    res.status(503).json({
+      success: false,
+      message: 'Database is temporarily unavailable',
+    });
+  }
+});
 
 // Test endpoint to verify Cloudinary config
 app.get('/test-cloudinary', (req, res) => {
