@@ -4,7 +4,7 @@
     "slug": "muscle-garage",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "musclegarage",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#1C1C1C",
@@ -16,9 +16,9 @@
       "package": "com.musclegarage.app",
       "adaptiveIcon": {
         "backgroundColor": "#1C1C1C",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundImage": "./assets/images/logo.png",
+        "monochromeImage": "./assets/images/logo.png"
       },
       "predictiveBackGestureEnabled": false
     },
