@@ -53,6 +53,7 @@ export default function SignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showDobPicker, setShowDobPicker] = useState(false);
+  const [iosDobDraft, setIosDobDraft] = useState<Date | null>(null);
   const [errors, setErrors] = useState<any>({});
 
   const today = new Date();
@@ -66,6 +67,44 @@ export default function SignupScreen() {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const toDateOnlyString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseDateForPicker = (value: string) => {
+    if (!value) return null;
+    const [yearStr, monthStr, dayStr] = value.split('T')[0].split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    if (!year || !month || !day) return null;
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const openDobPicker = () => {
+    if (Platform.OS === 'ios') {
+      setIosDobDraft(parseDateForPicker(formData.dateOfBirth) || today);
+    }
+    setShowDobPicker(true);
+  };
+
+  const cancelDobSelection = () => {
+    setShowDobPicker(false);
+    setIosDobDraft(null);
+  };
+
+  const confirmDobSelection = () => {
+    if (iosDobDraft) {
+      updateField('dateOfBirth', toDateOnlyString(iosDobDraft));
+    }
+    setShowDobPicker(false);
+    setIosDobDraft(null);
   };
 
   // Keyboard handling is managed by KeyboardAvoidingView
@@ -438,7 +477,7 @@ export default function SignupScreen() {
                   <Ionicons name="calendar-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
                   <TouchableOpacity
                     style={styles.datePickerButton}
-                    onPress={() => setShowDobPicker(true)}
+                    onPress={openDobPicker}
                   >
                     <Text style={[styles.datePickerText, !formData.dateOfBirth && styles.datePickerPlaceholder]}>
                       {formData.dateOfBirth ? formatDate(formData.dateOfBirth) : 'Date of Birth'}
@@ -472,22 +511,39 @@ export default function SignupScreen() {
               </View>
 
               {showDobPicker && (
-                <DateTimePicker
-                  value={formData.dateOfBirth ? new Date(formData.dateOfBirth) : today}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  maximumDate={today}
-                  onChange={(event, selectedDate) => {
-                    if (Platform.OS !== 'ios') {
+                <>
+                  <DateTimePicker
+                    value={Platform.OS === 'ios' ? (iosDobDraft || parseDateForPicker(formData.dateOfBirth) || today) : (parseDateForPicker(formData.dateOfBirth) || today)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    maximumDate={today}
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS === 'ios') {
+                        if (selectedDate) {
+                          setIosDobDraft(selectedDate);
+                        }
+                        return;
+                      }
+
                       setShowDobPicker(false);
-                    }
-                    if (event.type === 'dismissed' || !selectedDate) {
-                      return;
-                    }
-                    const iso = selectedDate.toISOString().split('T')[0];
-                    updateField('dateOfBirth', iso);
-                  }}
-                />
+                      if (event.type === 'dismissed' || !selectedDate) {
+                        return;
+                      }
+                      updateField('dateOfBirth', toDateOnlyString(selectedDate));
+                    }}
+                  />
+
+                  {Platform.OS === 'ios' && (
+                    <View style={styles.iosPickerActions}>
+                      <TouchableOpacity style={styles.iosPickerActionButton} onPress={cancelDobSelection}>
+                        <Text style={styles.iosPickerCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.iosPickerActionButton} onPress={confirmDobSelection}>
+                        <Text style={styles.iosPickerDoneText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
               )}
 
               <View style={styles.buttonRow}>
@@ -718,6 +774,28 @@ const styles = StyleSheet.create({
   },
   datePickerPlaceholder: {
     color: Colors.darkGray,
+  },
+  iosPickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 10,
+  },
+  iosPickerActionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  iosPickerCancelText: {
+    color: Colors.lightGray,
+    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontWeight: '600',
+  },
+  iosPickerDoneText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontWeight: '700',
   },
 
   inputIcon: {

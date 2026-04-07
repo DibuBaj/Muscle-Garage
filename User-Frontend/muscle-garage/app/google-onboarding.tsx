@@ -31,6 +31,7 @@ export default function GoogleOnboardingScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showDobPicker, setShowDobPicker] = useState(false);
+  const [iosDobDraft, setIosDobDraft] = useState<Date | null>(null);
 
   const today = new Date();
 
@@ -43,6 +44,44 @@ export default function GoogleOnboardingScreen() {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const toDateOnlyString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseDateForPicker = (value: string) => {
+    if (!value) return null;
+    const [yearStr, monthStr, dayStr] = value.split('T')[0].split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    if (!year || !month || !day) return null;
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const openDobPicker = () => {
+    if (Platform.OS === 'ios') {
+      setIosDobDraft(parseDateForPicker(dateOfBirth) || today);
+    }
+    setShowDobPicker(true);
+  };
+
+  const cancelDobSelection = () => {
+    setShowDobPicker(false);
+    setIosDobDraft(null);
+  };
+
+  const confirmDobSelection = () => {
+    if (iosDobDraft) {
+      setDateOfBirth(toDateOnlyString(iosDobDraft));
+    }
+    setShowDobPicker(false);
+    setIosDobDraft(null);
   };
 
   const fullname = params.fullname as string;
@@ -204,7 +243,7 @@ export default function GoogleOnboardingScreen() {
                 <Ionicons name="calendar-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
                 <TouchableOpacity
                   style={styles.datePickerButton}
-                  onPress={() => setShowDobPicker(true)}
+                  onPress={openDobPicker}
                 >
                   <Text style={[styles.datePickerText, !dateOfBirth && styles.datePickerPlaceholder]}>
                     {dateOfBirth ? formatDate(dateOfBirth) : 'Date of Birth'}
@@ -228,21 +267,39 @@ export default function GoogleOnboardingScreen() {
             <Text style={styles.optionalText}>Optional - You can update these later</Text>
 
             {showDobPicker && (
-              <DateTimePicker
-                value={dateOfBirth ? new Date(dateOfBirth) : today}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                maximumDate={today}
-                onChange={(event, selectedDate) => {
-                  if (Platform.OS !== 'ios') {
+              <>
+                <DateTimePicker
+                  value={Platform.OS === 'ios' ? (iosDobDraft || parseDateForPicker(dateOfBirth) || today) : (parseDateForPicker(dateOfBirth) || today)}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  maximumDate={today}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'ios') {
+                      if (selectedDate) {
+                        setIosDobDraft(selectedDate);
+                      }
+                      return;
+                    }
+
                     setShowDobPicker(false);
-                  }
-                  if (event.type === 'dismissed' || !selectedDate) {
-                    return;
-                  }
-                  setDateOfBirth(selectedDate.toISOString().split('T')[0]);
-                }}
-              />
+                    if (event.type === 'dismissed' || !selectedDate) {
+                      return;
+                    }
+                    setDateOfBirth(toDateOnlyString(selectedDate));
+                  }}
+                />
+
+                {Platform.OS === 'ios' && (
+                  <View style={styles.iosPickerActions}>
+                    <TouchableOpacity style={styles.iosPickerActionButton} onPress={cancelDobSelection}>
+                      <Text style={styles.iosPickerCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.iosPickerActionButton} onPress={confirmDobSelection}>
+                      <Text style={styles.iosPickerDoneText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
             )}
 
             <View style={styles.buttonRow}>
@@ -357,6 +414,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
     overflow: 'hidden',
+  },
+  iosPickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 10,
+  },
+  iosPickerActionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  iosPickerCancelText: {
+    color: Colors.lightGray,
+    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontWeight: '600',
+  },
+  iosPickerDoneText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontWeight: '700',
   },
   datePickerButton: {
     flex: 1,
