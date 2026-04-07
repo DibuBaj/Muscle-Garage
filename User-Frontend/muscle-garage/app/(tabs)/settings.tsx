@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   ActivityIndicator,
   Image,
@@ -13,6 +12,7 @@ import {
   Platform,
   RefreshControl,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
@@ -30,9 +30,57 @@ interface UserDetails {
   email: string;
   phone: string;
   username: string;
-  age?: number;
+  dateOfBirth?: string;
   weight?: number;
 }
+
+const toDateOnlyString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateForForm = (value?: string | Date | null) => {
+  if (!value) return '';
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '' : toDateOnlyString(value);
+  }
+
+  const [dateOnlyPart] = value.split('T');
+  const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (dateOnlyRegex.test(dateOnlyPart)) return dateOnlyPart;
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '' : toDateOnlyString(parsed);
+};
+
+const parseDateForPicker = (value?: string) => {
+  if (!value) return null;
+  const normalized = normalizeDateForForm(value);
+  if (!normalized) return null;
+
+  const [yearStr, monthStr, dayStr] = normalized.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  if (!year || !month || !day) return null;
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const buildFormData = (source: Partial<UserDetails> | null | undefined): UserDetails => ({
+  id: source?.id ?? '',
+  fullname: source?.fullname ?? '',
+  email: source?.email ?? '',
+  phone: source?.phone ?? '',
+  username: source?.username ?? '',
+  dateOfBirth: normalizeDateForForm(source?.dateOfBirth),
+  weight: typeof source?.weight === 'number' ? source.weight : 0,
+});
 
 export default function SettingsScreen() {
   const { user, logout, token, updateUserContext } = useAuth();
@@ -47,16 +95,23 @@ export default function SettingsScreen() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [iosDobDraft, setIosDobDraft] = useState<Date | null>(null);
 
-  const [formData, setFormData] = useState<UserDetails>({
-    id: user?.id || '',
-    fullname: user?.fullname || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    username: user?.username || '',
-    age: user?.age || 0,
-    weight: user?.weight || 0,
-  });
+  const today = new Date();
+
+  const formatDate = (value?: string) => {
+    if (!value) return 'N/A';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'N/A';
+    return parsed.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const [formData, setFormData] = useState<UserDetails>(() => buildFormData(user));
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -82,19 +137,7 @@ export default function SettingsScreen() {
     setFormData({ ...formData, phone: text });
   };
 
-  useEffect(() => {
-    fetchUserProfile();
-    requestImagePermissions();
-  }, []);
-
-  const requestImagePermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      console.log('Image picker permission not granted');
-    }
-  };
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       setProfileLoading(true);
       const response = await axios.get(`${API_URL}/user/profile`, {
@@ -105,34 +148,30 @@ export default function SettingsScreen() {
 
       if (response.data.success) {
         const userData = response.data.user;
-        setFormData({
-          id: userData.id || '',
-          fullname: userData.fullname || '',
-          email: userData.email || '',
-          phone: userData.phone || '',
-          username: userData.username || '',
-          age: userData.age || 0,
-          weight: userData.weight || 0,
-        });
+        setFormData(buildFormData(userData));
         setProfilePicture(userData.profilePicture || null);
       }
     } catch (error: any) {
       console.error('Fetch profile error:', error);
       // Fallback to user from context if API fails
       if (user) {
-        setFormData({
-          id: user.id || '',
-          fullname: user.fullname || '',
-          email: user.email || '',
-          phone: user.phone || '',
-          username: user.username || '',
-          age: user.age || 0,
-          weight: user.weight || 0,
-        });
+        setFormData(buildFormData(user));
         setProfilePicture(user.profilePicture || null);
       }
     } finally {
       setProfileLoading(false);
+    }
+  }, [token, user]);
+
+  useEffect(() => {
+    fetchUserProfile();
+    requestImagePermissions();
+  }, [fetchUserProfile]);
+
+  const requestImagePermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      console.log('Image picker permission not granted');
     }
   };
 
@@ -142,8 +181,34 @@ export default function SettingsScreen() {
     setRefreshing(false);
   };
 
+  const openDobPicker = () => {
+    if (Platform.OS === 'ios') {
+      setIosDobDraft(parseDateForPicker(formData.dateOfBirth) || today);
+    }
+    setShowDobPicker(true);
+  };
+
+  const cancelDobSelection = () => {
+    setShowDobPicker(false);
+    setIosDobDraft(null);
+  };
+
+  const confirmDobSelection = () => {
+    if (iosDobDraft) {
+      setFormData({
+        ...formData,
+        dateOfBirth: toDateOnlyString(iosDobDraft),
+      });
+    }
+    setShowDobPicker(false);
+    setIosDobDraft(null);
+  };
+
   const handleUpdateProfile = async () => {
     const sanitizedPhone = sanitizePhone(formData.phone || '');
+    const dateOfBirthToSave = normalizeDateForForm(
+      iosDobDraft ? toDateOnlyString(iosDobDraft) : formData.dateOfBirth
+    );
 
     if (!formData.fullname || !formData.email || !sanitizedPhone || !formData.username) {
       setErrorMessage('Please fill in all required fields');
@@ -166,7 +231,7 @@ export default function SettingsScreen() {
           email: formData.email,
           phone: sanitizedPhone,
           username: formData.username,
-          age: formData.age,
+          dateOfBirth: dateOfBirthToSave || undefined,
           weight: formData.weight,
         },
         {
@@ -177,6 +242,20 @@ export default function SettingsScreen() {
       );
 
       if (response.data.success) {
+        const updatedUser = response.data.user;
+        if (updatedUser) {
+          const normalizedUpdatedUser = {
+            ...updatedUser,
+            dateOfBirth: updatedUser.dateOfBirth || dateOfBirthToSave,
+          };
+          setFormData(buildFormData(normalizedUpdatedUser));
+          await updateUserContext(normalizedUpdatedUser);
+        } else {
+          setFormData({
+            ...formData,
+            dateOfBirth: dateOfBirthToSave,
+          });
+        }
         setSuccessMessage('Profile updated successfully!');
         setIsEditing(false);
         setTimeout(() => setSuccessMessage(''), 2000);
@@ -495,12 +574,12 @@ export default function SettingsScreen() {
                   <Text style={styles.infoValue}>{formData.phone}</Text>
                 </View>
 
-                {formData.age ? (
+                {formData.dateOfBirth ? (
                   <>
                     <View style={styles.divider} />
                     <View style={styles.infoItem}>
-                      <Text style={styles.infoLabel}>Age</Text>
-                      <Text style={styles.infoValue}>{formData.age} years</Text>
+                      <Text style={styles.infoLabel}>Date of Birth</Text>
+                      <Text style={styles.infoValue}>{formatDate(formData.dateOfBirth)}</Text>
                     </View>
                   </>
                 ) : null}
@@ -577,17 +656,59 @@ export default function SettingsScreen() {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Age</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={formData.age?.toString() || ''}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, age: parseInt(text) || 0 })
-                    }
-                    keyboardType="numeric"
-                    placeholderTextColor={Colors.darkGray}
-                  />
+                  <Text style={styles.label}>Date of Birth</Text>
+                  <TouchableOpacity
+                    style={styles.datePickerInput}
+                    onPress={openDobPicker}
+                  >
+                    <Text style={[styles.datePickerInputText, !formData.dateOfBirth && styles.datePickerPlaceholder]}>
+                      {formData.dateOfBirth ? formatDate(formData.dateOfBirth) : 'Select date of birth'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+
+                {showDobPicker && (
+                  <>
+                    <DateTimePicker
+                      value={Platform.OS === 'ios' ? (iosDobDraft || parseDateForPicker(formData.dateOfBirth) || today) : (parseDateForPicker(formData.dateOfBirth) || today)}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      maximumDate={today}
+                      onChange={(event, selectedDate) => {
+                        if (Platform.OS === 'ios') {
+                          if (selectedDate) {
+                            setIosDobDraft(selectedDate);
+                            setFormData({
+                              ...formData,
+                              dateOfBirth: toDateOnlyString(selectedDate),
+                            });
+                          }
+                          return;
+                        }
+
+                        setShowDobPicker(false);
+                        if (event.type === 'dismissed' || !selectedDate) {
+                          return;
+                        }
+                        setFormData({
+                          ...formData,
+                          dateOfBirth: toDateOnlyString(selectedDate),
+                        });
+                      }}
+                    />
+
+                    {Platform.OS === 'ios' && (
+                      <View style={styles.iosPickerActions}>
+                        <TouchableOpacity style={styles.iosPickerActionButton} onPress={cancelDobSelection}>
+                          <Text style={styles.iosPickerCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iosPickerActionButton} onPress={confirmDobSelection}>
+                          <Text style={styles.iosPickerDoneText}>Done</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
+                )}
 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Weight in kg</Text>
@@ -608,15 +729,9 @@ export default function SettingsScreen() {
                   style={[styles.button, styles.buttonCancel]}
                   onPress={() => {
                     setIsEditing(false);
-                    setFormData({
-                      id: user?.id || '',
-                      fullname: user?.fullname || '',
-                      email: user?.email || '',
-                      phone: user?.phone || '',
-                      username: user?.username || '',
-                      age: user?.age || 0,
-                      weight: user?.weight || 0,
-                    });
+                    setShowDobPicker(false);
+                    setIosDobDraft(null);
+                    setFormData(buildFormData(user));
                   }}
                   disabled={loading}
                 >
@@ -1039,6 +1154,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
     fontFamily: 'Poppins',
+  },
+  datePickerInput: {
+    backgroundColor: Colors.inputBackground,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  datePickerInputText: {
+    fontSize: 14,
+    color: Colors.white,
+    fontFamily: 'Poppins',
+  },
+  datePickerPlaceholder: {
+    color: Colors.darkGray,
+  },
+  iosPickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 10,
+  },
+  iosPickerActionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  iosPickerCancelText: {
+    color: Colors.lightGray,
+    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontWeight: '600',
+  },
+  iosPickerDoneText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontWeight: '700',
   },
   passwordInputContainer: {
     flexDirection: 'row',

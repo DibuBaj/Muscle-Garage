@@ -10,7 +10,7 @@ interface User {
   email: string;
   phone: string;
   fullname: string;
-  age?: number;
+  dateOfBirth?: string;
   weight?: number;
   createdAt?: string;
   authProvider?: 'email' | 'google';
@@ -24,7 +24,7 @@ interface SignupData {
   fullname: string;
   phone: string;
   password: string;
-  age: number;
+  dateOfBirth?: string;
   weight?: number;
 }
 
@@ -38,7 +38,7 @@ interface AuthContextType {
   verifyOTP: (email: string, otp: string) => Promise<void>;
   resendOTP: (email: string) => Promise<void>;
   googleAuth: (googleId: string, email: string, fullname: string, profilePicture?: string) => Promise<boolean>;
-  completeGoogleOnboarding: (googleId: string, email: string, fullname: string, username: string, phone: string, age?: number, weight?: number, profilePicture?: string) => Promise<void>;
+  completeGoogleOnboarding: (googleId: string, email: string, fullname: string, username: string, phone: string, dateOfBirth?: string, weight?: number, profilePicture?: string) => Promise<void>;
   updateUserContext: (userData: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
@@ -289,7 +289,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const completeGoogleOnboarding = async (googleId: string, email: string, fullname: string, username: string, phone: string, age?: number, weight?: number, profilePicture?: string) => {
+  const completeGoogleOnboarding = async (googleId: string, email: string, fullname: string, username: string, phone: string, dateOfBirth?: string, weight?: number, profilePicture?: string) => {
     try {
       setError(null);
       setIsAuthenticating(true);
@@ -301,7 +301,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         fullname,
         username,
         phone,
-        age,
+        dateOfBirth,
         weight,
         profilePicture,
       });
