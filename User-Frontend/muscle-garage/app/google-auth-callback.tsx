@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -9,6 +9,7 @@ export default function GoogleAuthCallbackScreen() {
   const params = useLocalSearchParams();
   const { googleAuth } = useAuth();
   const [message, setMessage] = useState('Completing Google sign in...');
+  const hasHandledRef = useRef(false);
 
   const status = useMemo(() => String(params.status || '').toLowerCase(), [params.status]);
   const googleId = useMemo(() => String(params.googleId || ''), [params.googleId]);
@@ -18,6 +19,11 @@ export default function GoogleAuthCallbackScreen() {
   const backendMessage = useMemo(() => String(params.message || ''), [params.message]);
 
   useEffect(() => {
+    if (hasHandledRef.current) {
+      return;
+    }
+    hasHandledRef.current = true;
+
     let isMounted = true;
 
     const completeGoogleAuth = async () => {

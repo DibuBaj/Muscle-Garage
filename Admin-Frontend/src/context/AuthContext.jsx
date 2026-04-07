@@ -1,6 +1,5 @@
-import { createContext, useState, useContext, useEffect } from 'react';
-
-const AuthContext = createContext();
+import { useState, useEffect } from 'react';
+import { AuthContext } from './authContextInstance';
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,7 +17,7 @@ export const AuthProvider = ({ children }) => {
           const { email } = JSON.parse(storedAuth);
           setAdminEmail(email);
           setIsAuthenticated(true);
-        } catch (parseError) {
+        } catch {
           // If JSON parse fails, clear bad data
           localStorage.removeItem('adminAuth');
           localStorage.removeItem('adminToken');
@@ -67,10 +66,3 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};

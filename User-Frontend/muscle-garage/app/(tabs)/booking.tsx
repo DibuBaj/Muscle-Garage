@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -109,10 +109,6 @@ export default function BookingScreen() {
     return /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/.test(cleanUrl);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [token]);
-
   // Clean up expired bookings from activeBookings and bookedIds
   useEffect(() => {
     const cleanupExpiredBookings = () => {
@@ -151,7 +147,7 @@ export default function BookingScreen() {
     return () => clearInterval(interval);
   }, [activeBookings]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -272,7 +268,11 @@ export default function BookingScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

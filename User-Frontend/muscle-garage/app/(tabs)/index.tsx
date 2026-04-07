@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, RefreshControl } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -70,18 +70,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const scrollHandler = useLiquidTabBarScrollHandler();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      console.log('Dashboard focused - refreshing data');
-      fetchDashboardData();
-    }, [])
-  );
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Fetching dashboard data with token:', token?.substring(0, 20) + '...');
@@ -120,7 +109,6 @@ export default function DashboardScreen() {
           
           // Filter for active bookings - handle both old and new API response formats
           const sessions = bookings.filter((b: Booking) => {
-            const isTrainerBooking = b.type === 'trainer' || b.kind === 'trainer';
             const isSessionBooking = b.type === 'session' || b.kind === 'session';
             const isActive = b.isActive || b.status === 'active';
             return isSessionBooking && isActive;
@@ -148,7 +136,18 @@ export default function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Dashboard focused - refreshing data');
+      fetchDashboardData();
+    }, [fetchDashboardData])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -167,16 +166,6 @@ export default function DashboardScreen() {
   const handleLogout = async () => {
     await logout();
     router.replace('/auth-choice');
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
   };
 
   const isSubscriptionActive = subscription && subscription.daysLeft > 0;

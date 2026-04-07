@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, TextInput, Animated, StyleSheet, ActivityIndicator, Modal, SafeAreaView, PanResponder, BackHandler, Linking } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, TextInput, Animated, StyleSheet, ActivityIndicator, Modal, SafeAreaView, PanResponder, BackHandler } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import MultiSlider from '@ptomasroos/react-native-multi-slider';
@@ -10,60 +10,14 @@ import { Colors } from '@/constants/colors';
 import { API_URL } from '@/constants/api';
 import { useAuth } from '@/context/AuthContext';
 import { useLiquidTabBarScrollHandler } from '@/components/shared/tabBarVisibility';
-
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: string;
-  createdAt?: string;
-  updatedAt?: string;
-  images?: string[];
-  rating?: number;
-  reviews?: number;
-}
-
-interface CartItem extends Product {
-  quantity: number;
-}
-
-interface Order {
-  _id: string;
-  customerName: string;
-  email: string;
-  products: Array<{ productName: string; quantity: number; priceAtPurchase: number }>;
-  status: 'Unfulfilled' | 'In Progress' | 'Fulfilled';
-  orderTotal: number;
-  paymentMethod: string;
-  createdAt: string;
-  shippingCost: number;
-}
-
-interface NepalWardRow {
-  province_en: string;
-  district_en: string;
-  municipality_en: string;
-  ward_en: string;
-  province_np?: string;
-  district_np?: string;
-  municipality_np?: string;
-  ward_np?: string;
-}
-
-const NEPAL_WARD_ROWS: NepalWardRow[] = require('@/assets/nepal-ward-level-full.json');
+import {
+  NEPAL_WARD_ROWS,
+  SHIPPING,
+  SORT_OPTIONS,
+} from './store.constants';
+import type { CartItem, Order, Product } from './store.constants';
 
 const StoreScreen = () => {
-  const SORT_OPTIONS = [
-    { key: 'alpha-asc', label: 'Alphabet A-Z' },
-    { key: 'alpha-desc', label: 'Alphabet Z-A' },
-    { key: 'price-asc', label: 'Price low to high' },
-    { key: 'price-desc', label: 'Price high to low' },
-    { key: 'date-asc', label: 'Date old to new' },
-    { key: 'date-desc', label: 'Date new to old' },
-  ] as const;
-
   const auth = useAuth();
   const params = useLocalSearchParams<{ paymentSuccess?: string; paymentTs?: string }>();
   const scrollHandler = useLiquidTabBarScrollHandler();
@@ -90,9 +44,7 @@ const StoreScreen = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [historyBadgeCount, setHistoryBadgeCount] = useState(0);
   const knownOrderStatusesRef = useRef<Record<string, Order['status']>>({});
-  const drawerX = useRef(new Animated.Value(400)).current;
   const detailFadeAnim = useRef(new Animated.Value(1)).current;
-  const SHIPPING = 100;
   const sanitizePhone = (value: string) => value.replace(/\D/g, '');
 
   // Reset selected image when product changes
@@ -139,19 +91,6 @@ const StoreScreen = () => {
     }
   }, [auth.user]);
 
-  useEffect(() => {
-    if (params.paymentSuccess === '1') {
-      setCart([]);
-      setCartOpen(false);
-      setCheckoutOpen(false);
-      setSelected(null);
-      setConfirmation(null);
-      fetchOrders(false);
-    }
-  }, [params.paymentSuccess, params.paymentTs]);
-
-
-
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -166,7 +105,7 @@ const StoreScreen = () => {
     }
   };
 
-  const fetchOrders = async (showLoader = true) => {
+  const fetchOrders = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) setOrdersLoading(true);
       const res = await fetch(`${API_URL}/orders/user/history?email=${encodeURIComponent(auth.user?.email || '')}`);
@@ -197,7 +136,7 @@ const StoreScreen = () => {
     } finally {
       if (showLoader) setOrdersLoading(false);
     }
-  };
+  }, [auth.user?.email, orderHistoryOpen]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -209,11 +148,22 @@ const StoreScreen = () => {
   };
 
   useEffect(() => {
+    if (params.paymentSuccess === '1') {
+      setCart([]);
+      setCartOpen(false);
+      setCheckoutOpen(false);
+      setSelected(null);
+      setConfirmation(null);
+      fetchOrders(false);
+    }
+  }, [params.paymentSuccess, params.paymentTs, fetchOrders]);
+
+  useEffect(() => {
     if (orderHistoryOpen && auth.user) {
       setHistoryBadgeCount(0);
       fetchOrders();
     }
-  }, [orderHistoryOpen, auth.user]);
+  }, [orderHistoryOpen, auth.user, fetchOrders]);
 
   useEffect(() => {
     if (!auth.user) return;
@@ -226,7 +176,7 @@ const StoreScreen = () => {
     }, 30000);
 
     return () => clearInterval(intervalId);
-  }, [auth.user, orderHistoryOpen]);
+  }, [auth.user, orderHistoryOpen, fetchOrders]);
 
   const formatRs = (num: number) => `Rs. ${num.toLocaleString('en-IN')}`;
   const categories = Array.from(new Set(products.map((p) => p.category)));
@@ -438,7 +388,7 @@ const StoreScreen = () => {
           showToast(data.message || 'Failed to place order');
         }
       }
-    } catch (e: any) {
+    } catch {
       showToast('Error placing order');
     } finally {
       setPlacing(false);
@@ -1034,7 +984,11 @@ const StoreScreen = () => {
             style={[styles.categoryChip, filters.cats.has(cat) && styles.categoryChipActive]}
             onPress={() => {
               const next = new Set(filters.cats);
-              next.has(cat) ? next.delete(cat) : next.add(cat);
+              if (next.has(cat)) {
+                next.delete(cat);
+              } else {
+                next.add(cat);
+              }
               setFilters({ ...filters, cats: next });
             }}
           >

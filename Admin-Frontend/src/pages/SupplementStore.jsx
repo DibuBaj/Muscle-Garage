@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import './SupplementStore.css';
 import { API_URL } from '../utils/api';
 
@@ -54,11 +54,7 @@ const SupplementStore = () => {
     return token ? { Authorization: token, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
   }, []);
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -78,7 +74,11 @@ const SupplementStore = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminHeaders]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   useEffect(() => {
     const handleModalClickOutside = (event) => {

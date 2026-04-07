@@ -11,11 +11,11 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
-import { Picker } from '@react-native-picker/picker';
 
 export default function GoogleOnboardingScreen() {
   const router = useRouter();
@@ -25,11 +25,25 @@ export default function GoogleOnboardingScreen() {
 
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
-  const [age, setAge] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [weight, setWeight] = useState('');
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDobPicker, setShowDobPicker] = useState(false);
+
+  const today = new Date();
+
+  const formatDate = (value: string) => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
 
   const fullname = params.fullname as string;
   const email = params.email as string;
@@ -77,7 +91,7 @@ export default function GoogleOnboardingScreen() {
         fullname,
         username,
         phone,
-        age ? Number(age) : undefined,
+        dateOfBirth || undefined,
         weight ? Number(weight) : undefined,
         profilePicture
       );
@@ -188,18 +202,14 @@ export default function GoogleOnboardingScreen() {
             <View style={styles.row}>
               <View style={[styles.pickerContainer, styles.halfInput]}>
                 <Ionicons name="calendar-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-                <Picker
-                  selectedValue={age}
-                  onValueChange={(itemValue) => setAge(itemValue)}
-                  style={styles.picker}
-                  dropdownIconColor={Colors.white}
-                  mode="dropdown"
+                <TouchableOpacity
+                  style={styles.datePickerButton}
+                  onPress={() => setShowDobPicker(true)}
                 >
-                  <Picker.Item label="Age" value="" />
-                  {Array.from({ length: 100 }, (_, i) => i + 1).map((ageNum) => (
-                    <Picker.Item key={ageNum} label={ageNum.toString()} value={ageNum.toString()} />
-                  ))}
-                </Picker>
+                  <Text style={[styles.datePickerText, !dateOfBirth && styles.datePickerPlaceholder]}>
+                    {dateOfBirth ? formatDate(dateOfBirth) : 'Date of Birth'}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <View style={[styles.inputContainer, styles.halfInput]}>
@@ -216,6 +226,24 @@ export default function GoogleOnboardingScreen() {
             </View>
 
             <Text style={styles.optionalText}>Optional - You can update these later</Text>
+
+            {showDobPicker && (
+              <DateTimePicker
+                value={dateOfBirth ? new Date(dateOfBirth) : today}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={today}
+                onChange={(event, selectedDate) => {
+                  if (Platform.OS !== 'ios') {
+                    setShowDobPicker(false);
+                  }
+                  if (event.type === 'dismissed' || !selectedDate) {
+                    return;
+                  }
+                  setDateOfBirth(selectedDate.toISOString().split('T')[0]);
+                }}
+              />
+            )}
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
@@ -255,8 +283,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
     padding: 24,
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 40,
   },
   headerContainer: {
@@ -329,11 +358,17 @@ const styles = StyleSheet.create({
     borderColor: '#333333',
     overflow: 'hidden',
   },
-  picker: {
+  datePickerButton: {
     flex: 1,
+    justifyContent: 'center',
+    height: '100%',
+  },
+  datePickerText: {
     color: Colors.white,
     fontSize: 16,
-    height: 56,
+  },
+  datePickerPlaceholder: {
+    color: Colors.darkGray,
   },
   inputIcon: {
     marginRight: 12,

@@ -17,14 +17,6 @@ export function GlassHeader({ title, scrollY, style }: GlassHeaderProps) {
   const iosDesign = useIOSDesign();
   const insets = useSafeAreaInsets();
 
-  if (Platform.OS === 'android') {
-    return (
-      <View style={[styles.androidHeader, { paddingTop: insets.top + 12 }, style]}>
-        <Text style={styles.androidTitle}>{title}</Text>
-      </View>
-    );
-  }
-
   const blurStyle = useAnimatedStyle(() => {
     const y = scrollY?.value ?? 0;
     return {
@@ -39,6 +31,14 @@ export function GlassHeader({ title, scrollY, style }: GlassHeaderProps) {
       opacity: interpolate(y, [0, 80], [1, 0.92], Extrapolation.CLAMP),
     };
   });
+
+  if (Platform.OS === 'android') {
+    return (
+      <View style={[styles.androidHeader, { paddingTop: insets.top + 12 }, style]}>
+        <Text style={styles.androidTitle}>{title}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.wrapper, { paddingTop: insets.top + 6 }, style]}>

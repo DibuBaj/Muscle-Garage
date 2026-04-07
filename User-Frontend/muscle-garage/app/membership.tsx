@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -65,15 +65,7 @@ export default function MembershipScreen() {
     }
   };
 
-  useEffect(() => {
-    const initializeData = async () => {
-      await fetchPlans();
-      await fetchSubscription();
-    };
-    initializeData();
-  }, []);
-
-  const fetchSubscription = async () => {
+  const fetchSubscription = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/subscription/me`, {
         headers: {
@@ -89,7 +81,15 @@ export default function MembershipScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    const initializeData = async () => {
+      await fetchPlans();
+      await fetchSubscription();
+    };
+    initializeData();
+  }, [fetchSubscription]);
 
   const handleSubscribe = async () => {
     if (!selectedPlan) {

@@ -11,7 +11,6 @@ const UserManagement = () => {
   const [deleting, setDeleting] = useState(false);
   const [editModal, setEditModal] = useState({ show: false, user: null });
   const [pauseData, setPauseData] = useState({ startDate: '', endDate: '' });
-  const [subscriptionData, setSubscriptionData] = useState({ membershipId: '', totalDays: '' });
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [startDateInputType, setStartDateInputType] = useState('text');
@@ -229,7 +228,6 @@ const UserManagement = () => {
   const handleEditClick = (user) => {
     setEditModal({ show: true, user });
     setPauseData({ startDate: '', endDate: '' });
-    setSubscriptionData({ membershipId: '', totalDays: '' });
     setSelectedPlan(null);
     setStartDateInputType('text');
     setEndDateInputType('text');
@@ -238,28 +236,7 @@ const UserManagement = () => {
   const handleEditCancel = () => {
     setEditModal({ show: false, user: null });
     setPauseData({ startDate: '', endDate: '' });
-    setSubscriptionData({ membershipId: '', totalDays: '' });
     setSelectedPlan(null);
-  };
-
-  // Ensure clicking a date input opens the browser date picker
-  const openDatePicker = (e) => {
-    try {
-      const input = e?.target;
-      if (!input) return;
-      if (typeof input.showPicker === 'function') {
-        e.preventDefault();
-        input.showPicker();
-      } else {
-        setTimeout(() => {
-          if (typeof input.showPicker === 'function') {
-            try { input.showPicker(); } catch (_) {}
-          }
-        }, 0);
-      }
-    } catch (_) {
-      // Ignore if showPicker is unsupported; native behavior will apply
-    }
   };
 
   // Open picker on first click by preventing default, flipping type, and showing picker
@@ -283,7 +260,9 @@ const UserManagement = () => {
           if (sel && sel.removeAllRanges) sel.removeAllRanges();
         }
         input.focus();
-      } catch (_) {}
+      } catch {
+        input.focus();
+      }
     }, 0);
   };
 
@@ -530,8 +509,8 @@ const UserManagement = () => {
 
     // Phone validation (if provided)
     if (createFormData.phone.trim()) {
-      const phoneRegex = /^[\+]?[1-9][\d]{9}$/;
-      if (!phoneRegex.test(createFormData.phone.replace(/[\s\-\(\)]/g, ''))) {
+      const phoneRegex = /^\+?[1-9]\d{9}$/;
+      if (!phoneRegex.test(createFormData.phone.replace(/[\s\-()]/g, ''))) {
         setCreateFormError('Please enter a valid 10-digit phone number');
         return;
       }
@@ -930,7 +909,6 @@ const UserManagement = () => {
                           className={`plan-card ${selectedPlan === plan._id ? 'selected' : ''}`}
                           onClick={() => {
                             setSelectedPlan(plan._id);
-                            setSubscriptionData({ membershipId: plan._id, totalDays: String(plan.days) });
                           }}
                         >
                           <div className="plan-label">{plan.name}</div>

@@ -1,34 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import './TrainerManagement.css';
 import { API_URL } from '../utils/api';
-
-const TRAINER_TYPES = [
-  'Weight Lifting',
-  'CrossFit',
-  'Yoga',
-  'Cardio',
-  'Pilates',
-  'Boxing',
-  'Fitness',
-  'Strength & Conditioning',
-  'Personal Training',
-  'Group Fitness'
-];
-
-const SESSION_TYPES = [
-  'Weight Lifting',
-  'CrossFit',
-  'Yoga',
-  'Cardio',
-  'Pilates',
-  'Boxing',
-  'Fitness',
-  'Strength & Conditioning',
-  'Personal Training',
-  'Group Fitness'
-];
-
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+import {
+  DAYS_OF_WEEK,
+  SESSION_TYPES,
+  TRAINER_TYPES,
+  createInitialSessionForm,
+  createInitialTrainerForm,
+  mapSessionToForm,
+  mapTrainerToForm,
+} from './trainerManagementConfig';
 
 const TrainerManagement = () => {
   // State for trainers and sessions
@@ -42,34 +23,10 @@ const TrainerManagement = () => {
   const [modalTab, setModalTab] = useState('trainer'); // 'trainer' or 'session'
   
   // Trainer form state
-  const [trainerForm, setTrainerForm] = useState({
-    name: '',
-    type: '',
-    description: '',
-    experience: '',
-    certification: null,
-    phone: '',
-    socialMedia: {
-      instagram: '',
-      facebook: '',
-      x: ''
-    },
-    rate: '',
-    isActive: true
-  });
+  const [trainerForm, setTrainerForm] = useState(createInitialTrainerForm);
 
   // Session form state
-  const [sessionForm, setSessionForm] = useState({
-    type: '',
-    description: '',
-    time: '',
-    duration: '',
-    rate: '',
-    maxCapacity: '',
-    dayOfWeek: '',
-    phone: '',
-    isActive: true
-  });
+  const [sessionForm, setSessionForm] = useState(createInitialSessionForm);
 
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -167,8 +124,7 @@ const TrainerManagement = () => {
   const fetchTrainersAndSessions = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('adminToken');
-      
+
       const trainerRes = await fetch(`${API_URL}/api/trainer/all`);
       const sessionRes = await fetch(`${API_URL}/api/session/all`);
 
@@ -203,32 +159,8 @@ const TrainerManagement = () => {
   };
 
   const resetForm = () => {
-    setTrainerForm({
-      name: '',
-      type: '',
-      description: '',
-      experience: '',
-      certification: null,
-      phone: '',
-      socialMedia: {
-        instagram: '',
-        facebook: '',
-        x: ''
-      },
-      rate: '',
-      isActive: true
-    });
-    setSessionForm({
-      type: '',
-      description: '',
-      time: '',
-      duration: '',
-      rate: '',
-      maxCapacity: '',
-      dayOfWeek: '',
-      phone: '',
-      isActive: true
-    });
+    setTrainerForm(createInitialTrainerForm());
+    setSessionForm(createInitialSessionForm());
     setFormError('');
   };
 
@@ -448,21 +380,7 @@ const TrainerManagement = () => {
         id: item._id,
         data: item
       });
-      setTrainerForm({
-        name: item.name || '',
-        type: item.type || '',
-        description: item.description || '',
-        experience: item.experience || '',
-        certification: null,
-        phone: item.phone || '',
-        socialMedia: {
-          instagram: item.instagram || '',
-          facebook: item.facebook || '',
-          x: item.x || ''
-        },
-        rate: item.rate || '',
-        isActive: item.isActive !== undefined ? item.isActive : true
-      });
+      setTrainerForm(mapTrainerToForm(item));
     } else {
       setEditModal({
         show: true,
@@ -470,17 +388,7 @@ const TrainerManagement = () => {
         id: item._id,
         data: item
       });
-      setSessionForm({
-        type: item.type || '',
-        description: item.description || '',
-        time: item.time || '',
-        duration: item.duration || '',
-        rate: item.rate || '',
-        maxCapacity: item.maxCapacity || '',
-        dayOfWeek: item.dayOfWeek || '',
-        phone: item.phone || '',
-        isActive: item.isActive !== undefined ? item.isActive : true
-      });
+      setSessionForm(mapSessionToForm(item));
     }
     setEditError('');
   };
@@ -488,6 +396,21 @@ const TrainerManagement = () => {
   const handleEditCancel = () => {
     setEditModal({ show: false, type: null, id: null, data: null });
     setEditError('');
+  };
+
+  const parseApiResponse = async (response) => {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    const text = await response.text();
+    return {
+      success: false,
+      message: text?.trim()
+        ? `Server returned a non-JSON response (${response.status}).`
+        : `Request failed with status ${response.status}.`,
+    };
   };
 
   const handleEditSubmit = async () => {
@@ -518,12 +441,12 @@ const TrainerManagement = () => {
         const response = await fetch(`${API_URL}/api/trainer/admin/${editModal.id}`, {
           method: 'PUT',
           headers: {
-            'Authorization': token
+            'Authorization': token?.startsWith('Bearer ') ? token : `Bearer ${token}`
           },
           body: formData
         });
 
-        const data = await response.json();
+        const data = await parseApiResponse(response);
 
         if (data.success) {
           alert('Trainer updated successfully!');
@@ -538,7 +461,7 @@ const TrainerManagement = () => {
         const response = await fetch(`${API_URL}/api/session/admin/${editModal.id}`, {
           method: 'PUT',
           headers: {
-            'Authorization': token,
+            'Authorization': token?.startsWith('Bearer ') ? token : `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -554,7 +477,7 @@ const TrainerManagement = () => {
           })
         });
 
-        const data = await response.json();
+        const data = await parseApiResponse(response);
 
         if (data.success) {
           alert('Workout session updated successfully!');

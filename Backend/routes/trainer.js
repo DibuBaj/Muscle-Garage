@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const {
   getAllTrainers,
   getTrainerById,
@@ -13,9 +14,14 @@ const {
 const adminMiddleware = require('../middleware/adminMiddleware');
 
 // Configure multer for disk storage (for certificate uploads)
+const uploadDir = path.join('uploads', 'trainer-certificates');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/trainer-certificates/');
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -38,15 +44,38 @@ const upload = multer({
   },
 });
 
+const uploadCertification = (req, res, next) => {
+  upload.single('certification')(req, res, (err) => {
+    if (!err) {
+      return next();
+    }
+
+    if (err instanceof multer.MulterError) {
+      const isFileSizeError = err.code === 'LIMIT_FILE_SIZE';
+      return res.status(400).json({
+        success: false,
+        message: isFileSizeError
+          ? 'Certification file is too large. Maximum size is 5MB.'
+          : err.message,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'Invalid certification upload',
+    });
+  });
+};
+
 // Get all trainers
 router.get('/all', getAllTrainers);
 
 // Admin routes (must come before /:id to avoid conflicts)
 // Create trainer
-router.post('/admin/create', adminMiddleware, upload.single('certification'), createTrainer);
+router.post('/admin/create', adminMiddleware, uploadCertification, createTrainer);
 
 // Update trainer
-router.put('/admin/:id', adminMiddleware, upload.single('certification'), updateTrainer);
+router.put('/admin/:id', adminMiddleware, uploadCertification, updateTrainer);
 
 // Delete trainer
 router.delete('/admin/:id', adminMiddleware, deleteTrainer);

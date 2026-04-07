@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
@@ -10,7 +10,7 @@ const AdminLayout = ({ children }) => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen] = useState(true);
   const [logoutModal, setLogoutModal] = useState(false);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const logoutModalRef = useRef(null);
@@ -33,16 +33,11 @@ const AdminLayout = ({ children }) => {
         (o) => (o.status || '').toLowerCase() === 'unfulfilled'
       ).length;
 
-      // Clear the badge when the admin is already viewing the store
-      if (location.pathname === '/admin/supplement-store') {
-        setNewOrdersCount(0);
-      } else {
-        setNewOrdersCount(unfulfilledCount);
-      }
+      setNewOrdersCount(unfulfilledCount);
     } catch (err) {
       console.error('Failed to fetch orders count', err);
     }
-  }, [location.pathname]);
+  }, []);
 
   const handleLogoutClick = () => {
     setLogoutModal(true);
@@ -76,16 +71,9 @@ const AdminLayout = ({ children }) => {
 
   // Poll for new orders periodically; clear badge when viewing the supplement store
   useEffect(() => {
-    fetchNewOrdersCount();
     const intervalId = setInterval(fetchNewOrdersCount, 20000);
     return () => clearInterval(intervalId);
   }, [fetchNewOrdersCount]);
-
-  useEffect(() => {
-    if (location.pathname === '/admin/supplement-store') {
-      setNewOrdersCount(0);
-    }
-  }, [location.pathname]);
 
   return (
     <div className="admin-layout">
@@ -93,7 +81,7 @@ const AdminLayout = ({ children }) => {
         <Sidebar 
           isOpen={sidebarOpen} 
           onLogout={handleLogoutClick} 
-          newOrdersCount={newOrdersCount}
+          newOrdersCount={location.pathname === '/admin/supplement-store' ? 0 : newOrdersCount}
         />
         <main className="admin-content">
           {children}

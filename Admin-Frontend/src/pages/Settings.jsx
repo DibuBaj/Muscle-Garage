@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import logoImage from '../assets/logo.png';
 import './Settings.css';
 
@@ -35,7 +35,6 @@ const Settings = () => {
     <div className="settings-page">
       <div className="settings-header">
         <h1>Settings</h1>
-        <p>Manage branding and account security.</p>
       </div>
 
       <div className="settings-card">

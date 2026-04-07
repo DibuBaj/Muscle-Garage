@@ -79,6 +79,7 @@ const getApiUrl = () => {
   }
 
   if (Platform.OS === 'android') {
+    console.log('[api] Android detected, using 10.0.2.2');
     return buildApiUrl('10.0.2.2');
   }
 

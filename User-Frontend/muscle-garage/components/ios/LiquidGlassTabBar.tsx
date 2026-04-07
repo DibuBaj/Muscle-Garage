@@ -11,10 +11,6 @@ import { Colors } from '@/constants/colors';
 export function LiquidGlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
-  if (Platform.OS === 'android') {
-    return null;
-  }
-
   const supportsNativeLiquidGlass = isLiquidGlassAvailable();
 
   const tabCount = state.routes.length;
@@ -49,6 +45,10 @@ export function LiquidGlassTabBar({ state, descriptors, navigation }: BottomTabB
       ],
     };
   });
+
+  if (Platform.OS === 'android') {
+    return null;
+  }
 
   return (
     <Animated.View

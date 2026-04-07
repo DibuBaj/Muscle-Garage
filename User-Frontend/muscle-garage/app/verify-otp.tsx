@@ -35,7 +35,7 @@ export default function VerifyOTPScreen() {
         router.replace('/(tabs)');
       }, 100);
     }
-  }, [user]);
+  }, [user, router]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -123,7 +123,7 @@ export default function VerifyOTPScreen() {
 
         <Text style={styles.title}>Verify Your Email</Text>
         <Text style={styles.subtitle}>
-          We've sent a 6-digit code to{'\n'}
+          We&apos;ve sent a 6-digit code to{'\n'}
           <Text style={styles.emailText}>{email}</Text>
         </Text>
 
@@ -164,7 +164,7 @@ export default function VerifyOTPScreen() {
         </TouchableOpacity>
 
         <View style={styles.resendContainer}>
-          <Text style={styles.resendText}>Didn't receive the code? </Text>
+          <Text style={styles.resendText}>Didn&apos;t receive the code? </Text>
           {canResend ? (
             <TouchableOpacity onPress={handleResend} disabled={resendLoading}>
               {resendLoading ? (

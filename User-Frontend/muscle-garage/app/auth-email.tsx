@@ -30,7 +30,7 @@ export default function AuthEmailScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Sign In or Create Account</Text>
         <Text style={styles.subtitle}>
-          Choose how you'd like to continue with your email
+          Choose how you&apos;d like to continue with your email
         </Text>
       </View>
 
@@ -78,7 +78,7 @@ export default function AuthEmailScreen() {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Don't have an account? Create one to get started with your fitness transformation.
+          Don&apos;t have an account? Create one to get started with your fitness transformation.
         </Text>
       </View>
     </ScrollView>

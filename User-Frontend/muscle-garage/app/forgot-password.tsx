@@ -9,9 +9,6 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Image,
-  Keyboard,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -19,11 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import axios, { AxiosError } from 'axios';
 import { API_URL } from '@/constants/api';
 import PasswordStrengthIndicator from '@/components/password-strength-indicator';
-import { useAuth } from '@/context/AuthContext';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { login } = useAuth();
   const scrollViewRef = React.useRef<ScrollView>(null);
   const inputRefs = React.useRef<Record<string, View>>({});
 
@@ -293,7 +288,7 @@ export default function ForgotPasswordScreen() {
         {step === 2 && (
           <View style={styles.stepContainer}>
             <Text style={styles.infoText}>
-              We've sent a 6-digit code to <Text style={styles.boldText}>{email}</Text>
+              We&apos;ve sent a 6-digit code to <Text style={styles.boldText}>{email}</Text>
             </Text>
 
             <View style={styles.otpContainer}>
@@ -341,7 +336,7 @@ export default function ForgotPasswordScreen() {
               onPress={() => setStep(1)}
               disabled={loading}
             >
-              <Text style={styles.resendText}>Didn't receive code? <Text style={styles.resendLink}>Try another email</Text></Text>
+              <Text style={styles.resendText}>Didn&apos;t receive code? <Text style={styles.resendLink}>Try another email</Text></Text>
             </TouchableOpacity>
           </View>
         )}

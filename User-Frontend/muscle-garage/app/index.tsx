@@ -16,7 +16,7 @@ export default function Index() {
         router.replace('/auth-choice');
       }
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   return (
     <View style={styles.container}>

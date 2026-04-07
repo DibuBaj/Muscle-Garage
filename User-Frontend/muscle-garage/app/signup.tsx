@@ -10,10 +10,8 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
-  Keyboard,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/colors';
@@ -48,13 +46,27 @@ export default function SignupScreen() {
     phone: '',
     password: '',
     confirmPassword: '',
-    age: '',
+    dateOfBirth: '',
     weight: '',
   });
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [errors, setErrors] = useState<any>({});
+
+  const today = new Date();
+
+  const formatDate = (value: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
 
   // Keyboard handling is managed by KeyboardAvoidingView
 
@@ -110,9 +122,15 @@ export default function SignupScreen() {
     let valid = true;
     const newErrors: any = {};
 
-    if (formData.age && (isNaN(Number(formData.age)) || Number(formData.age) < 1)) {
-      newErrors.age = 'Age must be a valid number';
-      valid = false;
+    if (formData.dateOfBirth) {
+      const dob = new Date(formData.dateOfBirth);
+      if (Number.isNaN(dob.getTime())) {
+        newErrors.dateOfBirth = 'Please select a valid date of birth';
+        valid = false;
+      } else if (dob > today) {
+        newErrors.dateOfBirth = 'Date of birth cannot be in the future';
+        valid = false;
+      }
     }
 
     if (formData.weight && (isNaN(Number(formData.weight)) || Number(formData.weight) < 1)) {
@@ -198,9 +216,8 @@ export default function SignupScreen() {
         password: formData.password
       };
 
-      // Only add age and weight if they have valid values
-      if (formData.age && !isNaN(Number(formData.age))) {
-        otpData.age = Number(formData.age);
+      if (formData.dateOfBirth) {
+        otpData.dateOfBirth = formData.dateOfBirth;
       }
       if (formData.weight && !isNaN(Number(formData.weight))) {
         otpData.weight = Number(formData.weight);
@@ -419,18 +436,14 @@ export default function SignupScreen() {
               <View style={styles.row}>
                 <View style={[styles.pickerContainer, styles.halfInput]}>
                   <Ionicons name="calendar-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
-                  <Picker
-                    selectedValue={formData.age}
-                    onValueChange={(itemValue) => updateField('age', itemValue)}
-                    style={styles.picker}
-                    dropdownIconColor={Colors.white}
-                    mode="dropdown"
+                  <TouchableOpacity
+                    style={styles.datePickerButton}
+                    onPress={() => setShowDobPicker(true)}
                   >
-                    <Picker.Item label="Age" value="" />
-                    {Array.from({ length: 100 }, (_, i) => i + 1).map((age) => (
-                      <Picker.Item key={age} label={age.toString()} value={age.toString()} />
-                    ))}
-                  </Picker>
+                    <Text style={[styles.datePickerText, !formData.dateOfBirth && styles.datePickerPlaceholder]}>
+                      {formData.dateOfBirth ? formatDate(formData.dateOfBirth) : 'Date of Birth'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 <View 
                   style={[styles.inputContainer, styles.halfInput]}
@@ -451,12 +464,31 @@ export default function SignupScreen() {
               </View>
               <View style={styles.row}>
                 <View style={styles.halfWidth}>
-                  {errors.age ? <Text style={styles.errorText}>{errors.age}</Text> : null}
+                  {errors.dateOfBirth ? <Text style={styles.errorText}>{errors.dateOfBirth}</Text> : null}
                 </View>
                 <View style={styles.halfWidth}>
                   {errors.weight ? <Text style={styles.errorText}>{errors.weight}</Text> : null}
                 </View>
               </View>
+
+              {showDobPicker && (
+                <DateTimePicker
+                  value={formData.dateOfBirth ? new Date(formData.dateOfBirth) : today}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  maximumDate={today}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS !== 'ios') {
+                      setShowDobPicker(false);
+                    }
+                    if (event.type === 'dismissed' || !selectedDate) {
+                      return;
+                    }
+                    const iso = selectedDate.toISOString().split('T')[0];
+                    updateField('dateOfBirth', iso);
+                  }}
+                />
+              )}
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
@@ -674,6 +706,18 @@ const styles = StyleSheet.create({
     height: 56,
     paddingHorizontal: 0,
     color: Colors.white,
+  },
+  datePickerButton: {
+    flex: 1,
+    justifyContent: 'center',
+    height: '100%',
+  },
+  datePickerText: {
+    color: Colors.white,
+    fontSize: 16,
+  },
+  datePickerPlaceholder: {
+    color: Colors.darkGray,
   },
 
   inputIcon: {

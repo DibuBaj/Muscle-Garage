@@ -10,7 +10,6 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
   Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -194,7 +193,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
+            <Text style={styles.signupText}>Don&apos;t have an account? </Text>
             <TouchableOpacity onPress={() => router.push('/signup' as any)}>
               <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
 import axios from 'axios';
@@ -41,16 +40,10 @@ export default function ActiveTrainerSession({
   const router = useRouter();
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchActiveSessions();
-  }, [token]);
-
-  const fetchActiveSessions = async () => {
+  const fetchActiveSessions = React.useCallback(async () => {
     try {
       setLoading(true);
-      setError('');
 
       const response = await axios.get(`${API_URL}/booking/my-bookings`, {
         headers: {
@@ -64,16 +57,17 @@ export default function ActiveTrainerSession({
           (booking: any) => booking.status === 'active'
         );
         setActiveSessions(activeBookings);
-      } else {
-        setError(response.data.message || 'Failed to load active sessions');
       }
     } catch (err: any) {
       console.error('Error fetching active sessions:', err);
-      setError('Failed to load active sessions');
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchActiveSessions();
+  }, [fetchActiveSessions]);
 
   const handleBookNow = () => {
     router.push('/(tabs)/booking');
@@ -99,7 +93,7 @@ export default function ActiveTrainerSession({
           />
           <Text style={styles.emptyTitle}>No Active Sessions</Text>
           <Text style={styles.emptySubtitle}>
-            You don't have any active trainer or session bookings yet.
+            You don&apos;t have any active trainer or session bookings yet.
           </Text>
           <Text style={styles.emptyHint}>
             Book a trainer or session to get started with your fitness journey!

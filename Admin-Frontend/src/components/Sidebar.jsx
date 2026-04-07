@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
 import './Sidebar.css';
 import logo from '../assets/logo.png';
 
@@ -10,7 +9,6 @@ const Sidebar = ({ isOpen, onLogout, newOrdersCount = 0 }) => {
     return location.pathname === path;
   };
 
-  const baseUrl = import.meta.env.BASE_URL || '/';
   return (
     <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
       <div className="sidebar-logo">

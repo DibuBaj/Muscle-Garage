@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SafeAreaView,
-  Linking,
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -80,22 +79,7 @@ export default function MembershipScreen() {
     }
   };
 
-  useEffect(() => {
-    const initializeData = async () => {
-      await fetchPlans();
-      await fetchSubscription();
-    };
-    initializeData();
-  }, []);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      console.log('Membership page focused - refreshing subscription');
-      fetchSubscription();
-    }, [])
-  );
-
-  const fetchSubscription = async () => {
+  const fetchSubscription = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/subscription/me`, {
         headers: {
@@ -112,7 +96,22 @@ export default function MembershipScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    const initializeData = async () => {
+      await fetchPlans();
+      await fetchSubscription();
+    };
+    initializeData();
+  }, [fetchSubscription]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Membership page focused - refreshing subscription');
+      fetchSubscription();
+    }, [fetchSubscription])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);

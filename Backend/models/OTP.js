@@ -14,6 +14,7 @@ const otpSchema = new mongoose.Schema({
         fullname: String,
         phone: String,
         password: String,
+        dateOfBirth: Date,
         age: Number,
         weight: Number
     },

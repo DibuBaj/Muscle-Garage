@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { getPasswordStrength, getPasswordStrengthColor, getPasswordStrengthLabel } from '@/utils/passwordStrength';
+import { getPasswordStrength, getPasswordStrengthColor } from '@/utils/passwordStrength';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 

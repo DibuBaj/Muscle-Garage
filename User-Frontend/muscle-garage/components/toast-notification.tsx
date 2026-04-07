@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,14 +8,12 @@ interface ToastNotificationProps {
   visible: boolean;
   message: string;
   type: 'success' | 'error';
-  onHide?: () => void;
 }
 
 export default function ToastNotification({
   visible,
   message,
   type,
-  onHide,
 }: ToastNotificationProps) {
   const translateY = React.useRef(new Animated.Value(-100)).current;
   const insets = useSafeAreaInsets();
@@ -35,7 +33,7 @@ export default function ToastNotification({
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, translateY]);
 
   if (!visible && !message) {
     return null;

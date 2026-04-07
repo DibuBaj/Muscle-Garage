@@ -14,7 +14,7 @@ export default function TabLayout() {
     if (!loading && !isAuthenticating && !user) {
       router.replace('/auth-choice');
     }
-  }, [user, loading, isAuthenticating]);
+  }, [user, loading, isAuthenticating, router]);
 
   if (loading || isAuthenticating) {
     return (
