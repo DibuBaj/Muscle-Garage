@@ -176,6 +176,9 @@ const SupplementStore = () => {
   };
 
   const updateStatus = async (orderId, status) => {
+    const currentOrder = orders.find((o) => o._id === orderId);
+    if (!currentOrder || currentOrder.status === status) return;
+
     try {
       setStatusUpdating(orderId);
       setPendingStatusByOrder((prev) => ({ ...prev, [orderId]: status }));
@@ -395,7 +398,7 @@ const SupplementStore = () => {
                     .slice((orderPage - 1) * pageSize, orderPage * pageSize)
                     .map((o) => {
                     const isUpdating = statusUpdating === o._id;
-                    const shownStatus = pendingStatusByOrder[o._id] || o.status;
+                    const pendingStatus = pendingStatusByOrder[o._id];
                     return (
                     <tr key={o._id}>
                       <td>{o.id || o._id?.slice(0, 8)}</td>
@@ -420,11 +423,11 @@ const SupplementStore = () => {
                       <td>{formatRs((o.orderTotal || 0) + (o.shippingCost || 0))}</td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                          <span className={`status-badge ${statusColors[shownStatus] || 'status-unfulfilled'}`}>
-                            {shownStatus}
+                          <span className={`status-badge ${statusColors[o.status] || 'status-unfulfilled'}`}>
+                            {o.status}
                           </span>
                           <select
-                            value={shownStatus}
+                            value={o.status}
                             onChange={(e) => updateStatus(o._id, e.target.value)}
                             className="status-select"
                             disabled={isUpdating}
@@ -435,7 +438,7 @@ const SupplementStore = () => {
                           </select>
                           {isUpdating && (
                             <span style={{ fontSize: '12px', color: '#666', fontWeight: 500 }}>
-                              Updating...
+                              {pendingStatus ? `Updating to ${pendingStatus}...` : 'Updating...'}
                             </span>
                           )}
                         </div>
