@@ -41,6 +41,7 @@ const SupplementStore = () => {
   const [form, setForm] = useState(emptyProduct());
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [statusUpdating, setStatusUpdating] = useState('');
+  const [pendingStatusByOrder, setPendingStatusByOrder] = useState({});
   const [uploadingImages, setUploadingImages] = useState({});
   const [uploadErrors, setUploadErrors] = useState({});
   const [productPage, setProductPage] = useState(1);
@@ -177,6 +178,7 @@ const SupplementStore = () => {
   const updateStatus = async (orderId, status) => {
     try {
       setStatusUpdating(orderId);
+      setPendingStatusByOrder((prev) => ({ ...prev, [orderId]: status }));
       const res = await fetch(`${API_URL}/api/orders/admin/${orderId}/status`, {
         method: 'PUT',
         headers: adminHeaders,
@@ -191,6 +193,11 @@ const SupplementStore = () => {
     } catch (err) {
       alert(err.message || 'Failed to update status');
     } finally {
+      setPendingStatusByOrder((prev) => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
       setStatusUpdating('');
     }
   };
@@ -386,7 +393,10 @@ const SupplementStore = () => {
                 {orders.length > 0 ? (
                   orders
                     .slice((orderPage - 1) * pageSize, orderPage * pageSize)
-                    .map((o) => (
+                    .map((o) => {
+                    const isUpdating = statusUpdating === o._id;
+                    const shownStatus = pendingStatusByOrder[o._id] || o.status;
+                    return (
                     <tr key={o._id}>
                       <td>{o.id || o._id?.slice(0, 8)}</td>
                       <td>
@@ -410,23 +420,29 @@ const SupplementStore = () => {
                       <td>{formatRs((o.orderTotal || 0) + (o.shippingCost || 0))}</td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                          <span className={`status-badge ${statusColors[o.status] || 'status-unfulfilled'}`}>
-                            {o.status}
+                          <span className={`status-badge ${statusColors[shownStatus] || 'status-unfulfilled'}`}>
+                            {shownStatus}
                           </span>
                           <select
-                            value={o.status}
+                            value={shownStatus}
                             onChange={(e) => updateStatus(o._id, e.target.value)}
                             className="status-select"
-                            disabled={statusUpdating === o._id}
+                            disabled={isUpdating}
                           >
                             <option>Unfulfilled</option>
                             <option>In Progress</option>
                             <option>Fulfilled</option>
                           </select>
+                          {isUpdating && (
+                            <span style={{ fontSize: '12px', color: '#666', fontWeight: 500 }}>
+                              Updating...
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  ))
+                  );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="7">
