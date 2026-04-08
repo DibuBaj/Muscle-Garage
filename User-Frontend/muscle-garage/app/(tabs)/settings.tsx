@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Modal,
   SafeAreaView,
   Platform,
   RefreshControl,
@@ -97,6 +98,10 @@ export default function SettingsScreen() {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [iosDobDraft, setIosDobDraft] = useState<Date | null>(null);
+  const [deleteOtpModalVisible, setDeleteOtpModalVisible] = useState(false);
+  const [deleteOtp, setDeleteOtp] = useState('');
+  const [sendingDeleteOtp, setSendingDeleteOtp] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const today = new Date();
 
@@ -445,6 +450,83 @@ export default function SettingsScreen() {
     );
   };
 
+  const sendDeleteAccountOtp = async () => {
+    try {
+      setSendingDeleteOtp(true);
+      const response = await axios.post(
+        `${API_URL}/user/delete-account/send-otp`,
+        {},
+        {
+          headers: {
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setDeleteOtp('');
+        setDeleteOtpModalVisible(true);
+        setSuccessMessage('OTP sent to your email');
+        setTimeout(() => setSuccessMessage(''), 2500);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || 'Failed to send delete account OTP';
+      setErrorMessage(errorMsg);
+      setTimeout(() => setErrorMessage(''), 3000);
+    } finally {
+      setSendingDeleteOtp(false);
+    }
+  };
+
+  const handleDeleteAccountPress = () => {
+    Alert.alert(
+      'Delete Account',
+      'This action is permanent. Your account details will be deleted, but order, booking, and subscription records will be kept. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: sendDeleteAccountOtp,
+        },
+      ]
+    );
+  };
+
+  const verifyDeleteAccountOtp = async () => {
+    if (!deleteOtp.trim()) {
+      setErrorMessage('Please enter OTP');
+      setTimeout(() => setErrorMessage(''), 2500);
+      return;
+    }
+
+    try {
+      setDeletingAccount(true);
+      const response = await axios.post(
+        `${API_URL}/user/delete-account/verify-otp`,
+        { otp: deleteOtp.trim() },
+        {
+          headers: {
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setDeleteOtpModalVisible(false);
+        setDeleteOtp('');
+        await logout();
+        router.replace('/auth-choice');
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || 'Failed to delete account';
+      setErrorMessage(errorMsg);
+      setTimeout(() => setErrorMessage(''), 3000);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <ToastNotification
@@ -754,6 +836,30 @@ export default function SettingsScreen() {
           )}
             </View>
 
+            {/* Delete Account Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="warning" size={28} color={Colors.error} />
+                <View>
+                  <Text style={styles.sectionTitle}>Delete Account</Text>
+                  <Text style={styles.sectionSubtitle}>Permanently delete your account</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.logoutButton, sendingDeleteOtp && styles.buttonDisabled]}
+                onPress={handleDeleteAccountPress}
+                disabled={sendingDeleteOtp}
+              >
+                {sendingDeleteOtp ? (
+                  <ActivityIndicator size="small" color={Colors.error} />
+                ) : (
+                  <Ionicons name="trash" size={20} color={Colors.error} />
+                )}
+                <Text style={styles.logoutButtonText}>Delete Account</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Security Section */}
             <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -905,6 +1011,63 @@ export default function SettingsScreen() {
           )}
         </Animated.ScrollView>
       </SafeAreaView>
+
+      <Modal
+        visible={deleteOtpModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!deletingAccount) {
+            setDeleteOtpModalVisible(false);
+          }
+        }}
+      >
+        <View style={styles.deleteOtpOverlay}>
+          <View style={styles.deleteOtpModalCard}>
+            <Text style={styles.deleteOtpTitle}>Confirm Account Deletion</Text>
+            <Text style={styles.deleteOtpSubtitle}>
+              Enter the OTP sent to your email to permanently delete your account.
+            </Text>
+
+            <TextInput
+              style={styles.deleteOtpInput}
+              value={deleteOtp}
+              onChangeText={(text) => setDeleteOtp(text.replace(/\D/g, '').slice(0, 6))}
+              keyboardType="number-pad"
+              placeholder="Enter 6-digit OTP"
+              placeholderTextColor={Colors.darkGray}
+              maxLength={6}
+            />
+
+            <View style={styles.deleteOtpActions}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonCancel]}
+                onPress={() => {
+                  if (!deletingAccount) {
+                    setDeleteOtpModalVisible(false);
+                    setDeleteOtp('');
+                  }
+                }}
+                disabled={deletingAccount}
+              >
+                <Text style={styles.buttonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.deleteConfirmButton, deletingAccount && styles.buttonDisabled]}
+                onPress={verifyDeleteAccountOtp}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.buttonSaveText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1288,5 +1451,54 @@ const styles = StyleSheet.create({
     color: Colors.error,
     fontWeight: '700',
     flex: 1,
+  },
+  deleteOtpOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  deleteOtpModalCard: {
+    width: '100%',
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  deleteOtpTitle: {
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Poppins',
+  },
+  deleteOtpSubtitle: {
+    color: Colors.lightGray,
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 19,
+    fontFamily: 'Poppins',
+  },
+  deleteOtpInput: {
+    marginTop: 14,
+    backgroundColor: Colors.inputBackground,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: Colors.white,
+    borderWidth: 1,
+    borderColor: '#333333',
+    fontFamily: 'Poppins',
+    letterSpacing: 2,
+  },
+  deleteOtpActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  deleteConfirmButton: {
+    backgroundColor: Colors.error,
   },
 });

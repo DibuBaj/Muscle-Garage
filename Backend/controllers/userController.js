@@ -1,9 +1,11 @@
 const User = require('../models/User');
 const Subscription = require('../models/Subscription');
+const OTP = require('../models/OTP');
 const bcrypt = require('bcryptjs');
 const cloudinary = require('../config/cloudinary');
 const multer = require('multer');
 const { parseAndCalculateAge } = require('../utils/age');
+const { sendOTPEmail } = require('../config/email');
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
@@ -22,6 +24,8 @@ const upload = multer({
 });
 
 exports.uploadMiddleware = upload.single('profilePicture');
+
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // Get user profile
 exports.getUserProfile = async (req, res) => {
@@ -209,6 +213,100 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to change password'
+    });
+  }
+};
+
+// Send OTP for account deletion
+exports.sendDeleteAccountOTP = async (req, res) => {
+  try {
+    const user = await User.findById(req.user).select('email');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    await OTP.deleteMany({
+      email: user.email,
+      'userData.deleteAccount': true,
+    });
+
+    const otp = generateOTP();
+    const otpDoc = new OTP({
+      email: user.email,
+      otp,
+      userData: {
+        deleteAccount: true,
+        userId: String(user._id),
+      },
+    });
+
+    await otpDoc.save();
+    await sendOTPEmail(user.email, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email',
+    });
+  } catch (err) {
+    console.error('Send delete-account OTP error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send delete account OTP',
+    });
+  }
+};
+
+// Verify OTP and delete account
+exports.verifyDeleteAccountOTP = async (req, res) => {
+  const otp = String(req.body?.otp || '').trim();
+
+  if (!otp) {
+    return res.status(400).json({ success: false, message: 'OTP is required' });
+  }
+
+  try {
+    const user = await User.findById(req.user);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const otpDoc = await OTP.findOne({
+      email: user.email,
+      otp,
+      'userData.deleteAccount': true,
+      'userData.userId': String(user._id),
+    });
+
+    if (!otpDoc) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    await OTP.deleteMany({
+      email: user.email,
+      'userData.deleteAccount': true,
+    });
+
+    if (user.profilePicture) {
+      try {
+        const publicId = user.profilePicture.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`muscle-garage/profiles/${publicId}`);
+      } catch (cloudErr) {
+        console.error('Delete account: failed to remove profile image:', cloudErr);
+      }
+    }
+
+    // Delete only account/user record. Keep orders/bookings/subscriptions intact.
+    await User.findByIdAndDelete(user._id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (err) {
+    console.error('Verify delete-account OTP error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete account',
     });
   }
 };

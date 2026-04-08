@@ -1454,7 +1454,7 @@ const styles = StyleSheet.create({
   toastText: { color: '#fff', fontWeight: '600', fontSize: 13, fontFamily: 'Poppins' },
   
   historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#222' },
-  historyTitle: { color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Poppins' },
+  historyTitle: { color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Poppins',paddingTop: 20 },
   orderCard: { marginHorizontal: 14, marginVertical: 8, backgroundColor: Colors.cardBackground, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#333' },
   orderCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   orderStatusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },

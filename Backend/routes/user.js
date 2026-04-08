@@ -8,6 +8,8 @@ const {
   deleteUser,
   uploadProfilePicture,
   deleteProfilePicture,
+  sendDeleteAccountOTP,
+  verifyDeleteAccountOTP,
   uploadMiddleware,
   createUser
 } = require('../controllers/userController');
@@ -26,6 +28,10 @@ router.post('/change-password', authMiddleware, changePassword);
 // Profile picture routes
 router.post('/profile-picture', authMiddleware, uploadMiddleware, uploadProfilePicture);
 router.delete('/profile-picture', authMiddleware, deleteProfilePicture);
+
+// Delete account routes
+router.post('/delete-account/send-otp', authMiddleware, sendDeleteAccountOTP);
+router.post('/delete-account/verify-otp', authMiddleware, verifyDeleteAccountOTP);
 
 // Admin routes
 router.get('/admin/all', adminMiddleware, getAllUsers);
