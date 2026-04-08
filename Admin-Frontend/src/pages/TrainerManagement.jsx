@@ -43,12 +43,24 @@ const TrainerManagement = () => {
   const [trainerPage, setTrainerPage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
   const [bookingPage, setBookingPage] = useState(1);
+  const [trainerSearchQuery, setTrainerSearchQuery] = useState('');
+  const [sessionSearchQuery, setSessionSearchQuery] = useState('');
+  const [bookingSearchQuery, setBookingSearchQuery] = useState('');
+  const [showTrainerFilterDropdown, setShowTrainerFilterDropdown] = useState(false);
+  const [showSessionFilterDropdown, setShowSessionFilterDropdown] = useState(false);
+  const [showBookingFilterDropdown, setShowBookingFilterDropdown] = useState(false);
+  const [trainerFilters, setTrainerFilters] = useState({ active: false, inactive: false, type: 'all' });
+  const [sessionFilters, setSessionFilters] = useState({ active: false, inactive: false, full: false, type: 'all', day: 'all' });
+  const [bookingFilters, setBookingFilters] = useState({ active: false, expired: false, type: 'all' });
   const pageSize = 5;
 
   // Modal refs
   const createModalRef = useRef(null);
   const editModalRef = useRef(null);
   const deleteModalRef = useRef(null);
+  const trainerFilterRef = useRef(null);
+  const sessionFilterRef = useRef(null);
+  const bookingFilterRef = useRef(null);
 
   // Fetch trainers and sessions on mount
   useEffect(() => {
@@ -116,16 +128,38 @@ const TrainerManagement = () => {
   }, [deleteModal.show]);
 
   useEffect(() => {
+    const handleFilterClickOutside = (event) => {
+      if (trainerFilterRef.current && !trainerFilterRef.current.contains(event.target)) {
+        setShowTrainerFilterDropdown(false);
+      }
+      if (sessionFilterRef.current && !sessionFilterRef.current.contains(event.target)) {
+        setShowSessionFilterDropdown(false);
+      }
+      if (bookingFilterRef.current && !bookingFilterRef.current.contains(event.target)) {
+        setShowBookingFilterDropdown(false);
+      }
+    };
+
+    if (showTrainerFilterDropdown || showSessionFilterDropdown || showBookingFilterDropdown) {
+      document.addEventListener('mousedown', handleFilterClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleFilterClickOutside);
+    };
+  }, [showTrainerFilterDropdown, showSessionFilterDropdown, showBookingFilterDropdown]);
+
+  useEffect(() => {
     setTrainerPage(1);
-  }, [trainers]);
+  }, [trainers, trainerSearchQuery, trainerFilters]);
 
   useEffect(() => {
     setSessionPage(1);
-  }, [sessions]);
+  }, [sessions, sessionSearchQuery, sessionFilters]);
 
   useEffect(() => {
     setBookingPage(1);
-  }, [bookings]);
+  }, [bookings, bookingSearchQuery, bookingFilters]);
 
   const fetchTrainersAndSessions = async () => {
     try {
@@ -511,6 +545,84 @@ const TrainerManagement = () => {
     }
   };
 
+  const filteredTrainers = trainers.filter((trainer) => {
+    const q = trainerSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      trainer.name?.toLowerCase().includes(q) ||
+      trainer.type?.toLowerCase().includes(q) ||
+      trainer.phone?.toLowerCase().includes(q);
+
+    const hasStatusFilter = trainerFilters.active || trainerFilters.inactive;
+    const matchesStatus =
+      !hasStatusFilter ||
+      (trainerFilters.active && trainer.isActive) ||
+      (trainerFilters.inactive && !trainer.isActive);
+
+    const matchesType = trainerFilters.type === 'all' || trainer.type === trainerFilters.type;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const filteredSessions = sessions.filter((session) => {
+    const q = sessionSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      session.type?.toLowerCase().includes(q) ||
+      session.time?.toLowerCase().includes(q) ||
+      (session.dayOfWeek || '').toLowerCase().includes(q);
+
+    const hasStatusFilter = sessionFilters.active || sessionFilters.inactive || sessionFilters.full;
+    const matchesStatus =
+      !hasStatusFilter ||
+      (sessionFilters.full && session.isFull) ||
+      (sessionFilters.active && !session.isFull && session.isActive) ||
+      (sessionFilters.inactive && !session.isFull && !session.isActive);
+
+    const matchesType = sessionFilters.type === 'all' || session.type === sessionFilters.type;
+    const matchesDay = sessionFilters.day === 'all' || (session.dayOfWeek || '') === sessionFilters.day;
+
+    return matchesSearch && matchesStatus && matchesType && matchesDay;
+  });
+
+  const filteredBookings = bookings.filter((booking) => {
+    const q = bookingSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      booking.type?.toLowerCase().includes(q) ||
+      booking.bookingName?.toLowerCase().includes(q) ||
+      booking.customerName?.toLowerCase().includes(q) ||
+      booking.customerNumber?.toLowerCase().includes(q);
+
+    const hasStatusFilter = bookingFilters.active || bookingFilters.expired;
+    const status = (booking.status || '').toLowerCase();
+    const matchesStatus =
+      !hasStatusFilter ||
+      (bookingFilters.active && status === 'active') ||
+      (bookingFilters.expired && status === 'expired');
+
+    const matchesType = bookingFilters.type === 'all' || booking.type === bookingFilters.type;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const trainerActiveFiltersCount =
+    Number(trainerFilters.active) +
+    Number(trainerFilters.inactive) +
+    Number(trainerFilters.type !== 'all');
+
+  const sessionActiveFiltersCount =
+    Number(sessionFilters.active) +
+    Number(sessionFilters.inactive) +
+    Number(sessionFilters.full) +
+    Number(sessionFilters.type !== 'all') +
+    Number(sessionFilters.day !== 'all');
+
+  const bookingActiveFiltersCount =
+    Number(bookingFilters.active) +
+    Number(bookingFilters.expired) +
+    Number(bookingFilters.type !== 'all');
+
   if (loading) {
     return (
       <div className="trainer-management">
@@ -547,7 +659,86 @@ const TrainerManagement = () => {
             </button>
           </div>
 
-          {trainers.length > 0 ? (
+          <div className="trainer-search-container">
+            <div className="trainer-search-filter-wrapper">
+              <div className="trainer-search-box">
+                <svg className="trainer-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  type="text"
+                  className="trainer-search-input"
+                  placeholder="Search trainers by name, type or phone..."
+                  value={trainerSearchQuery}
+                  onChange={(e) => setTrainerSearchQuery(e.target.value)}
+                />
+                {trainerSearchQuery && (
+                  <button
+                    className="trainer-clear-search"
+                    onClick={() => setTrainerSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              <div className="trainer-filter-container" ref={trainerFilterRef}>
+                <button
+                  className={`trainer-filter-button ${showTrainerFilterDropdown ? 'dropdown-open' : ''} ${trainerActiveFiltersCount > 0 ? 'has-filters' : ''}`}
+                  onClick={() => {
+                    setShowTrainerFilterDropdown((prev) => !prev);
+                    setShowSessionFilterDropdown(false);
+                    setShowBookingFilterDropdown(false);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 3H2l8 9.46v7.54l6 2v-9.54L22 3z"></path>
+                  </svg>
+                  Filters {trainerActiveFiltersCount > 0 && `(${trainerActiveFiltersCount})`}
+                </button>
+
+                {showTrainerFilterDropdown && (
+                  <div className="trainer-filter-dropdown">
+                    <div className="trainer-filter-group-label">Status</div>
+                    <label className="trainer-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={trainerFilters.active}
+                        onChange={() => setTrainerFilters((prev) => ({ ...prev, active: !prev.active }))}
+                      />
+                      Active
+                    </label>
+                    <label className="trainer-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={trainerFilters.inactive}
+                        onChange={() => setTrainerFilters((prev) => ({ ...prev, inactive: !prev.inactive }))}
+                      />
+                      Inactive
+                    </label>
+                    <div className="trainer-filter-group-label">Type</div>
+                    <select
+                      className="trainer-filter-select"
+                      value={trainerFilters.type}
+                      onChange={(e) => setTrainerFilters((prev) => ({ ...prev, type: e.target.value }))}
+                    >
+                      <option value="all">All Types</option>
+                      {TRAINER_TYPES.map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {filteredTrainers.length > 0 ? (
             <div className="table-container">
               <table className="trainers-table">
                 <thead>
@@ -562,7 +753,7 @@ const TrainerManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {trainers
+                  {filteredTrainers
                     .slice((trainerPage - 1) * pageSize, trainerPage * pageSize)
                     .map(trainer => (
                     <tr key={trainer._id}>
@@ -598,7 +789,7 @@ const TrainerManagement = () => {
                   ))}
                 </tbody>
               </table>
-              {trainers.length > pageSize && (
+              {filteredTrainers.length > pageSize && (
                 <div className="table-pagination">
                   <button
                     className="page-btn"
@@ -607,11 +798,11 @@ const TrainerManagement = () => {
                   >
                     Prev
                   </button>
-                  <span className="page-info">Page {trainerPage} of {Math.ceil(trainers.length / pageSize)}</span>
+                  <span className="page-info">Page {trainerPage} of {Math.ceil(filteredTrainers.length / pageSize)}</span>
                   <button
                     className="page-btn"
-                    onClick={() => setTrainerPage((p) => Math.min(Math.ceil(trainers.length / pageSize), p + 1))}
-                    disabled={trainerPage >= Math.ceil(trainers.length / pageSize)}
+                    onClick={() => setTrainerPage((p) => Math.min(Math.ceil(filteredTrainers.length / pageSize), p + 1))}
+                    disabled={trainerPage >= Math.ceil(filteredTrainers.length / pageSize)}
                   >
                     Next
                   </button>
@@ -620,7 +811,7 @@ const TrainerManagement = () => {
             </div>
           ) : (
             <div className="no-data">
-              <p>No trainers yet. Click the Create button to add one.</p>
+              <p>{trainers.length > 0 ? 'No trainers match your search or filters.' : 'No trainers yet. Click the Create button to add one.'}</p>
             </div>
           )}
         </div>
@@ -631,7 +822,105 @@ const TrainerManagement = () => {
             <h2>Workout Sessions</h2>
           </div>
 
-          {sessions.length > 0 ? (
+          <div className="trainer-search-container">
+            <div className="trainer-search-filter-wrapper">
+              <div className="trainer-search-box">
+                <svg className="trainer-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  type="text"
+                  className="trainer-search-input"
+                  placeholder="Search sessions by type, time or day..."
+                  value={sessionSearchQuery}
+                  onChange={(e) => setSessionSearchQuery(e.target.value)}
+                />
+                {sessionSearchQuery && (
+                  <button
+                    className="trainer-clear-search"
+                    onClick={() => setSessionSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              <div className="trainer-filter-container" ref={sessionFilterRef}>
+                <button
+                  className={`trainer-filter-button ${showSessionFilterDropdown ? 'dropdown-open' : ''} ${sessionActiveFiltersCount > 0 ? 'has-filters' : ''}`}
+                  onClick={() => {
+                    setShowSessionFilterDropdown((prev) => !prev);
+                    setShowTrainerFilterDropdown(false);
+                    setShowBookingFilterDropdown(false);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 3H2l8 9.46v7.54l6 2v-9.54L22 3z"></path>
+                  </svg>
+                  Filters {sessionActiveFiltersCount > 0 && `(${sessionActiveFiltersCount})`}
+                </button>
+
+                {showSessionFilterDropdown && (
+                  <div className="trainer-filter-dropdown">
+                    <div className="trainer-filter-group-label">Status</div>
+                    <label className="trainer-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={sessionFilters.active}
+                        onChange={() => setSessionFilters((prev) => ({ ...prev, active: !prev.active }))}
+                      />
+                      Active
+                    </label>
+                    <label className="trainer-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={sessionFilters.inactive}
+                        onChange={() => setSessionFilters((prev) => ({ ...prev, inactive: !prev.inactive }))}
+                      />
+                      Inactive
+                    </label>
+                    <label className="trainer-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={sessionFilters.full}
+                        onChange={() => setSessionFilters((prev) => ({ ...prev, full: !prev.full }))}
+                      />
+                      Full
+                    </label>
+                    <div className="trainer-filter-group-label">Type</div>
+                    <select
+                      className="trainer-filter-select"
+                      value={sessionFilters.type}
+                      onChange={(e) => setSessionFilters((prev) => ({ ...prev, type: e.target.value }))}
+                    >
+                      <option value="all">All Types</option>
+                      {SESSION_TYPES.map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                    <div className="trainer-filter-group-label">Day</div>
+                    <select
+                      className="trainer-filter-select"
+                      value={sessionFilters.day}
+                      onChange={(e) => setSessionFilters((prev) => ({ ...prev, day: e.target.value }))}
+                    >
+                      <option value="all">All Days</option>
+                      {DAYS_OF_WEEK.map((day) => (
+                        <option key={day} value={day}>{day}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {filteredSessions.length > 0 ? (
             <div className="table-container">
               <table className="sessions-table">
                 <thead>
@@ -648,7 +937,7 @@ const TrainerManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sessions
+                  {filteredSessions
                     .slice((sessionPage - 1) * pageSize, sessionPage * pageSize)
                     .map(session => (
                     <tr key={session._id}>
@@ -690,7 +979,7 @@ const TrainerManagement = () => {
                   ))}
                 </tbody>
               </table>
-              {sessions.length > pageSize && (
+              {filteredSessions.length > pageSize && (
                 <div className="table-pagination">
                   <button
                     className="page-btn"
@@ -699,11 +988,11 @@ const TrainerManagement = () => {
                   >
                     Prev
                   </button>
-                  <span className="page-info">Page {sessionPage} of {Math.ceil(sessions.length / pageSize)}</span>
+                  <span className="page-info">Page {sessionPage} of {Math.ceil(filteredSessions.length / pageSize)}</span>
                   <button
                     className="page-btn"
-                    onClick={() => setSessionPage((p) => Math.min(Math.ceil(sessions.length / pageSize), p + 1))}
-                    disabled={sessionPage >= Math.ceil(sessions.length / pageSize)}
+                    onClick={() => setSessionPage((p) => Math.min(Math.ceil(filteredSessions.length / pageSize), p + 1))}
+                    disabled={sessionPage >= Math.ceil(filteredSessions.length / pageSize)}
                   >
                     Next
                   </button>
@@ -712,7 +1001,7 @@ const TrainerManagement = () => {
             </div>
           ) : (
             <div className="no-data">
-              <p>No sessions yet. Click the Create button to add one.</p>
+              <p>{sessions.length > 0 ? 'No sessions match your search or filters.' : 'No sessions yet. Click the Create button to add one.'}</p>
             </div>
           )}
         </div>
@@ -723,7 +1012,86 @@ const TrainerManagement = () => {
             <h2>Bookings</h2>
           </div>
 
-          {bookings.length > 0 ? (
+          <div className="trainer-search-container">
+            <div className="trainer-search-filter-wrapper">
+              <div className="trainer-search-box">
+                <svg className="trainer-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  type="text"
+                  className="trainer-search-input"
+                  placeholder="Search bookings by type, booking, customer..."
+                  value={bookingSearchQuery}
+                  onChange={(e) => setBookingSearchQuery(e.target.value)}
+                />
+                {bookingSearchQuery && (
+                  <button
+                    className="trainer-clear-search"
+                    onClick={() => setBookingSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              <div className="trainer-filter-container" ref={bookingFilterRef}>
+                <button
+                  className={`trainer-filter-button ${showBookingFilterDropdown ? 'dropdown-open' : ''} ${bookingActiveFiltersCount > 0 ? 'has-filters' : ''}`}
+                  onClick={() => {
+                    setShowBookingFilterDropdown((prev) => !prev);
+                    setShowTrainerFilterDropdown(false);
+                    setShowSessionFilterDropdown(false);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 3H2l8 9.46v7.54l6 2v-9.54L22 3z"></path>
+                  </svg>
+                  Filters {bookingActiveFiltersCount > 0 && `(${bookingActiveFiltersCount})`}
+                </button>
+
+                {showBookingFilterDropdown && (
+                  <div className="trainer-filter-dropdown">
+                    <div className="trainer-filter-group-label">Status</div>
+                    <label className="trainer-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={bookingFilters.active}
+                        onChange={() => setBookingFilters((prev) => ({ ...prev, active: !prev.active }))}
+                      />
+                      Active
+                    </label>
+                    <label className="trainer-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={bookingFilters.expired}
+                        onChange={() => setBookingFilters((prev) => ({ ...prev, expired: !prev.expired }))}
+                      />
+                      Expired
+                    </label>
+                    <div className="trainer-filter-group-label">Type</div>
+                    <select
+                      className="trainer-filter-select"
+                      value={bookingFilters.type}
+                      onChange={(e) => setBookingFilters((prev) => ({ ...prev, type: e.target.value }))}
+                    >
+                      <option value="all">All Types</option>
+                      {Array.from(new Set(bookings.map((booking) => booking.type).filter(Boolean))).map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {filteredBookings.length > 0 ? (
             <div className="table-container">
               <table className="bookings-table">
                 <thead>
@@ -736,7 +1104,7 @@ const TrainerManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings
+                  {filteredBookings
                     .slice((bookingPage - 1) * pageSize, bookingPage * pageSize)
                     .map((booking) => (
                       <tr key={booking._id}>
@@ -753,7 +1121,7 @@ const TrainerManagement = () => {
                     ))}
                 </tbody>
               </table>
-              {bookings.length > pageSize && (
+              {filteredBookings.length > pageSize && (
                 <div className="table-pagination">
                   <button
                     className="page-btn"
@@ -762,11 +1130,11 @@ const TrainerManagement = () => {
                   >
                     Prev
                   </button>
-                  <span className="page-info">Page {bookingPage} of {Math.ceil(bookings.length / pageSize)}</span>
+                  <span className="page-info">Page {bookingPage} of {Math.ceil(filteredBookings.length / pageSize)}</span>
                   <button
                     className="page-btn"
-                    onClick={() => setBookingPage((p) => Math.min(Math.ceil(bookings.length / pageSize), p + 1))}
-                    disabled={bookingPage >= Math.ceil(bookings.length / pageSize)}
+                    onClick={() => setBookingPage((p) => Math.min(Math.ceil(filteredBookings.length / pageSize), p + 1))}
+                    disabled={bookingPage >= Math.ceil(filteredBookings.length / pageSize)}
                   >
                     Next
                   </button>
@@ -775,7 +1143,7 @@ const TrainerManagement = () => {
             </div>
           ) : (
             <div className="no-data">
-              <p>No bookings available yet.</p>
+              <p>{bookings.length > 0 ? 'No bookings match your search or filters.' : 'No bookings available yet.'}</p>
             </div>
           )}
         </div>

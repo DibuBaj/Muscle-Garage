@@ -46,9 +46,17 @@ const SupplementStore = () => {
   const [uploadErrors, setUploadErrors] = useState({});
   const [productPage, setProductPage] = useState(1);
   const [orderPage, setOrderPage] = useState(1);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [showProductFilterDropdown, setShowProductFilterDropdown] = useState(false);
+  const [showOrderFilterDropdown, setShowOrderFilterDropdown] = useState(false);
+  const [productFilters, setProductFilters] = useState({ inStock: false, outOfStock: false, category: 'all' });
+  const [orderFilters, setOrderFilters] = useState({ unfulfilled: false, inProgress: false, fulfilled: false, paymentMethod: 'all' });
   const pageSize = 5;
   const deleteModalRef = useRef(null);
   const productModalRef = useRef(null);
+  const productFilterRef = useRef(null);
+  const orderFilterRef = useRef(null);
 
   const adminHeaders = useMemo(() => {
     const token = localStorage.getItem('adminToken');
@@ -114,12 +122,31 @@ const SupplementStore = () => {
   }, [showProductModal]);
 
   useEffect(() => {
+    const handleFilterClickOutside = (event) => {
+      if (productFilterRef.current && !productFilterRef.current.contains(event.target)) {
+        setShowProductFilterDropdown(false);
+      }
+      if (orderFilterRef.current && !orderFilterRef.current.contains(event.target)) {
+        setShowOrderFilterDropdown(false);
+      }
+    };
+
+    if (showProductFilterDropdown || showOrderFilterDropdown) {
+      document.addEventListener('mousedown', handleFilterClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleFilterClickOutside);
+    };
+  }, [showProductFilterDropdown, showOrderFilterDropdown]);
+
+  useEffect(() => {
     setProductPage(1);
-  }, [products]);
+  }, [products, productSearchQuery, productFilters]);
 
   useEffect(() => {
     setOrderPage(1);
-  }, [orders]);
+  }, [orders, orderSearchQuery, orderFilters]);
 
   const openCreate = () => {
     setEditing(null);
@@ -250,6 +277,64 @@ const SupplementStore = () => {
     }
   };
 
+  const filteredProducts = products.filter((product) => {
+    const q = productSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      product.name?.toLowerCase().includes(q) ||
+      product.category?.toLowerCase().includes(q) ||
+      product.description?.toLowerCase().includes(q);
+
+    const hasStockFilter = productFilters.inStock || productFilters.outOfStock;
+    const matchesStock =
+      !hasStockFilter ||
+      (productFilters.inStock && Number(product.stock || 0) > 0) ||
+      (productFilters.outOfStock && Number(product.stock || 0) === 0);
+
+    const matchesCategory = productFilters.category === 'all' || product.category === productFilters.category;
+
+    return matchesSearch && matchesStock && matchesCategory;
+  });
+
+  const filteredOrders = orders.filter((order) => {
+    const q = orderSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      (order.id || order._id || '').toLowerCase().includes(q) ||
+      (order.customerName || '').toLowerCase().includes(q) ||
+      (order.phone || '').toLowerCase().includes(q) ||
+      (order.email || '').toLowerCase().includes(q);
+
+    const hasStatusFilter = orderFilters.unfulfilled || orderFilters.inProgress || orderFilters.fulfilled;
+    const status = order.status || '';
+    const matchesStatus =
+      !hasStatusFilter ||
+      (orderFilters.unfulfilled && status === 'Unfulfilled') ||
+      (orderFilters.inProgress && status === 'In Progress') ||
+      (orderFilters.fulfilled && status === 'Fulfilled');
+
+    const matchesPayment =
+      orderFilters.paymentMethod === 'all' ||
+      (order.paymentMethod || '') === orderFilters.paymentMethod;
+
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
+
+  const productActiveFiltersCount =
+    Number(productFilters.inStock) +
+    Number(productFilters.outOfStock) +
+    Number(productFilters.category !== 'all');
+
+  const orderActiveFiltersCount =
+    Number(orderFilters.unfulfilled) +
+    Number(orderFilters.inProgress) +
+    Number(orderFilters.fulfilled) +
+    Number(orderFilters.paymentMethod !== 'all');
+
+  const paymentMethodOptions = Array.from(
+    new Set(orders.map((order) => order.paymentMethod).filter(Boolean))
+  );
+
   return (
     <div className="supplement-store">
       <div className="header-section">
@@ -279,6 +364,84 @@ const SupplementStore = () => {
             
           </div>
 
+          <div className="store-search-container">
+            <div className="store-search-filter-wrapper">
+              <div className="store-search-box">
+                <svg className="store-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  type="text"
+                  className="store-search-input"
+                  placeholder="Search products by name, category or description..."
+                  value={productSearchQuery}
+                  onChange={(e) => setProductSearchQuery(e.target.value)}
+                />
+                {productSearchQuery && (
+                  <button
+                    className="store-clear-search"
+                    onClick={() => setProductSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              <div className="store-filter-container" ref={productFilterRef}>
+                <button
+                  className={`store-filter-button ${showProductFilterDropdown ? 'dropdown-open' : ''} ${productActiveFiltersCount > 0 ? 'has-filters' : ''}`}
+                  onClick={() => {
+                    setShowProductFilterDropdown((prev) => !prev);
+                    setShowOrderFilterDropdown(false);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 3H2l8 9.46v7.54l6 2v-9.54L22 3z"></path>
+                  </svg>
+                  Filters {productActiveFiltersCount > 0 && `(${productActiveFiltersCount})`}
+                </button>
+
+                {showProductFilterDropdown && (
+                  <div className="store-filter-dropdown">
+                    <div className="store-filter-group-label">Stock</div>
+                    <label className="store-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={productFilters.inStock}
+                        onChange={() => setProductFilters((prev) => ({ ...prev, inStock: !prev.inStock }))}
+                      />
+                      In Stock
+                    </label>
+                    <label className="store-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={productFilters.outOfStock}
+                        onChange={() => setProductFilters((prev) => ({ ...prev, outOfStock: !prev.outOfStock }))}
+                      />
+                      Out of Stock
+                    </label>
+                    <div className="store-filter-group-label">Category</div>
+                    <select
+                      className="store-filter-select"
+                      value={productFilters.category}
+                      onChange={(e) => setProductFilters((prev) => ({ ...prev, category: e.target.value }))}
+                    >
+                      <option value="all">All Categories</option>
+                      {categories.map((category) => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="table-container">
             <table className="products-table">
               <thead>
@@ -292,8 +455,8 @@ const SupplementStore = () => {
                 </tr>
               </thead>
               <tbody>
-                {products.length > 0 ? (
-                  products
+                {filteredProducts.length > 0 ? (
+                  filteredProducts
                     .slice((productPage - 1) * pageSize, productPage * pageSize)
                     .map((p) => (
                     <tr key={p._id}>
@@ -342,14 +505,14 @@ const SupplementStore = () => {
                   <tr>
                     <td colSpan="6">
                       <div className="no-data">
-                        <p>No products yet. Create your first product to get started.</p>
+                        <p>{products.length > 0 ? 'No products match your search or filters.' : 'No products yet. Create your first product to get started.'}</p>
                       </div>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-            {products.length > pageSize && (
+            {filteredProducts.length > pageSize && (
               <div className="table-pagination">
                 <button
                   className="page-btn"
@@ -358,11 +521,11 @@ const SupplementStore = () => {
                 >
                   Prev
                 </button>
-                <span className="page-info">Page {productPage} of {Math.ceil(products.length / pageSize)}</span>
+                <span className="page-info">Page {productPage} of {Math.ceil(filteredProducts.length / pageSize)}</span>
                 <button
                   className="page-btn"
-                  onClick={() => setProductPage((p) => Math.min(Math.ceil(products.length / pageSize), p + 1))}
-                  disabled={productPage >= Math.ceil(products.length / pageSize)}
+                  onClick={() => setProductPage((p) => Math.min(Math.ceil(filteredProducts.length / pageSize), p + 1))}
+                  disabled={productPage >= Math.ceil(filteredProducts.length / pageSize)}
                 >
                   Next
                 </button>
@@ -376,6 +539,92 @@ const SupplementStore = () => {
           <div className="header-section">
             <div className="header-info">
               <h2>Orders</h2>
+            </div>
+          </div>
+
+          <div className="store-search-container">
+            <div className="store-search-filter-wrapper">
+              <div className="store-search-box">
+                <svg className="store-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  type="text"
+                  className="store-search-input"
+                  placeholder="Search orders by id, customer, phone or email..."
+                  value={orderSearchQuery}
+                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                />
+                {orderSearchQuery && (
+                  <button
+                    className="store-clear-search"
+                    onClick={() => setOrderSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              <div className="store-filter-container" ref={orderFilterRef}>
+                <button
+                  className={`store-filter-button ${showOrderFilterDropdown ? 'dropdown-open' : ''} ${orderActiveFiltersCount > 0 ? 'has-filters' : ''}`}
+                  onClick={() => {
+                    setShowOrderFilterDropdown((prev) => !prev);
+                    setShowProductFilterDropdown(false);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 3H2l8 9.46v7.54l6 2v-9.54L22 3z"></path>
+                  </svg>
+                  Filters {orderActiveFiltersCount > 0 && `(${orderActiveFiltersCount})`}
+                </button>
+
+                {showOrderFilterDropdown && (
+                  <div className="store-filter-dropdown">
+                    <div className="store-filter-group-label">Status</div>
+                    <label className="store-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={orderFilters.unfulfilled}
+                        onChange={() => setOrderFilters((prev) => ({ ...prev, unfulfilled: !prev.unfulfilled }))}
+                      />
+                      Unfulfilled
+                    </label>
+                    <label className="store-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={orderFilters.inProgress}
+                        onChange={() => setOrderFilters((prev) => ({ ...prev, inProgress: !prev.inProgress }))}
+                      />
+                      In Progress
+                    </label>
+                    <label className="store-filter-item">
+                      <input
+                        type="checkbox"
+                        checked={orderFilters.fulfilled}
+                        onChange={() => setOrderFilters((prev) => ({ ...prev, fulfilled: !prev.fulfilled }))}
+                      />
+                      Fulfilled
+                    </label>
+                    <div className="store-filter-group-label">Payment Method</div>
+                    <select
+                      className="store-filter-select"
+                      value={orderFilters.paymentMethod}
+                      onChange={(e) => setOrderFilters((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                    >
+                      <option value="all">All Payment Methods</option>
+                      {paymentMethodOptions.map((method) => (
+                        <option key={method} value={method}>{method}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -393,8 +642,8 @@ const SupplementStore = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.length > 0 ? (
-                  orders
+                {filteredOrders.length > 0 ? (
+                  filteredOrders
                     .slice((orderPage - 1) * pageSize, orderPage * pageSize)
                     .map((o) => {
                     const isUpdating = statusUpdating === o._id;
@@ -450,14 +699,14 @@ const SupplementStore = () => {
                   <tr>
                     <td colSpan="7">
                       <div className="no-data">
-                        <p>No orders yet. Start selling your products!</p>
+                        <p>{orders.length > 0 ? 'No orders match your search or filters.' : 'No orders yet. Start selling your products!'}</p>
                       </div>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-            {orders.length > pageSize && (
+            {filteredOrders.length > pageSize && (
               <div className="table-pagination">
                 <button
                   className="page-btn"
@@ -466,11 +715,11 @@ const SupplementStore = () => {
                 >
                   Prev
                 </button>
-                <span className="page-info">Page {orderPage} of {Math.ceil(orders.length / pageSize)}</span>
+                <span className="page-info">Page {orderPage} of {Math.ceil(filteredOrders.length / pageSize)}</span>
                 <button
                   className="page-btn"
-                  onClick={() => setOrderPage((p) => Math.min(Math.ceil(orders.length / pageSize), p + 1))}
-                  disabled={orderPage >= Math.ceil(orders.length / pageSize)}
+                  onClick={() => setOrderPage((p) => Math.min(Math.ceil(filteredOrders.length / pageSize), p + 1))}
+                  disabled={orderPage >= Math.ceil(filteredOrders.length / pageSize)}
                 >
                   Next
                 </button>
