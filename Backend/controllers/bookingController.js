@@ -318,3 +318,45 @@ exports.deleteBooking = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
+
+// Admin: Get all bookings with customer details
+exports.getAllBookingsAdmin = async (req, res) => {
+  try {
+    const now = new Date();
+
+    const bookings = await Booking.find({})
+      .populate('userId', 'fullname phone')
+      .sort({ bookedAt: -1 });
+
+    const normalizedBookings = bookings.map((booking) => {
+      const isActive = booking.isActive && booking.expiresAt > now;
+      const typeLabel = booking.type === 'trainer' ? 'Trainer' : 'Session';
+      const bookingName = booking.type === 'trainer'
+        ? (booking.trainerName || 'Trainer')
+        : (booking.sessionType || 'Session');
+
+      return {
+        _id: booking._id,
+        type: typeLabel,
+        bookingName,
+        customerName: booking.userId?.fullname || 'Unknown',
+        customerNumber: booking.userId?.phone || '-',
+        status: isActive ? 'Active' : 'Expired',
+        bookedAt: booking.bookedAt,
+        expiresAt: booking.expiresAt,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      bookings: normalizedBookings,
+    });
+  } catch (err) {
+    console.error('Get all bookings admin error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bookings',
+      error: err.message,
+    });
+  }
+};

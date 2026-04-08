@@ -13,6 +13,7 @@ const AdminLayout = ({ children }) => {
   const [sidebarOpen] = useState(true);
   const [logoutModal, setLogoutModal] = useState(false);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [newBookingsCount, setNewBookingsCount] = useState(0);
   const logoutModalRef = useRef(null);
 
   const fetchNewOrdersCount = useCallback(async () => {
@@ -36,6 +37,30 @@ const AdminLayout = ({ children }) => {
       setNewOrdersCount(unfulfilledCount);
     } catch (err) {
       console.error('Failed to fetch orders count', err);
+    }
+  }, []);
+
+  const fetchNewBookingsCount = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      if (!token) return;
+
+      const res = await fetch(`${API_URL}/api/booking/admin/all`, {
+        headers: {
+          Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (!data.success) return;
+
+      const activeBookingCount = (data.bookings || []).filter(
+        (b) => (b.status || '').toLowerCase() === 'active'
+      ).length;
+
+      setNewBookingsCount(activeBookingCount);
+    } catch (err) {
+      console.error('Failed to fetch bookings count', err);
     }
   }, []);
 
@@ -71,9 +96,15 @@ const AdminLayout = ({ children }) => {
 
   // Poll for new orders periodically; clear badge when viewing the supplement store
   useEffect(() => {
+    fetchNewOrdersCount();
+    fetchNewBookingsCount();
     const intervalId = setInterval(fetchNewOrdersCount, 20000);
-    return () => clearInterval(intervalId);
-  }, [fetchNewOrdersCount]);
+    const bookingIntervalId = setInterval(fetchNewBookingsCount, 20000);
+    return () => {
+      clearInterval(intervalId);
+      clearInterval(bookingIntervalId);
+    };
+  }, [fetchNewOrdersCount, fetchNewBookingsCount]);
 
   return (
     <div className="admin-layout">
@@ -82,6 +113,7 @@ const AdminLayout = ({ children }) => {
           isOpen={sidebarOpen} 
           onLogout={handleLogoutClick} 
           newOrdersCount={location.pathname === '/admin/supplement-store' ? 0 : newOrdersCount}
+          newBookingsCount={location.pathname === '/admin/trainer-management' ? 0 : newBookingsCount}
         />
         <main className="admin-content">
           {children}

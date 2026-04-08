@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 import logo from '../assets/logo.png';
 
-const Sidebar = ({ isOpen, onLogout, newOrdersCount = 0 }) => {
+const Sidebar = ({ isOpen, onLogout, newOrdersCount = 0, newBookingsCount = 0 }) => {
   const location = useLocation();
 
   const isActive = (path) => {
@@ -68,7 +68,12 @@ const Sidebar = ({ isOpen, onLogout, newOrdersCount = 0 }) => {
             <path d="M8 11l-3 3-3-3" strokeWidth="2" />
             <path d="M16 11l3 3 3-3" strokeWidth="2" />
           </svg>
-          <span>Trainer/Session</span>
+          <span className="nav-link-label">Trainer/Session</span>
+          {newBookingsCount > 0 && (
+            <span className="nav-badge" aria-label={`${newBookingsCount} new bookings`}>
+              {newBookingsCount}
+            </span>
+          )}
         </Link>
 
         <Link

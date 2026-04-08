@@ -15,6 +15,7 @@ const TrainerManagement = () => {
   // State for trainers and sessions
   const [trainers, setTrainers] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -41,6 +42,7 @@ const TrainerManagement = () => {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [trainerPage, setTrainerPage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
+  const [bookingPage, setBookingPage] = useState(1);
   const pageSize = 5;
 
   // Modal refs
@@ -121,21 +123,35 @@ const TrainerManagement = () => {
     setSessionPage(1);
   }, [sessions]);
 
+  useEffect(() => {
+    setBookingPage(1);
+  }, [bookings]);
+
   const fetchTrainersAndSessions = async () => {
     try {
       setLoading(true);
 
+      const token = localStorage.getItem('adminToken');
       const trainerRes = await fetch(`${API_URL}/api/trainer/all`);
       const sessionRes = await fetch(`${API_URL}/api/session/all`);
+      const bookingRes = await fetch(`${API_URL}/api/booking/admin/all`, {
+        headers: {
+          Authorization: token?.startsWith('Bearer ') ? token : `Bearer ${token}`,
+        },
+      });
 
       const trainerData = await trainerRes.json();
       const sessionData = await sessionRes.json();
+      const bookingData = await bookingRes.json();
 
       if (trainerData.success) {
         setTrainers(trainerData.trainers);
       }
       if (sessionData.success) {
         setSessions(sessionData.sessions);
+      }
+      if (bookingData.success) {
+        setBookings(bookingData.bookings || []);
       }
       
       setError('');
@@ -697,6 +713,69 @@ const TrainerManagement = () => {
           ) : (
             <div className="no-data">
               <p>No sessions yet. Click the Create button to add one.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Bookings Section */}
+        <div className="section">
+          <div className="section-header">
+            <h2>Bookings</h2>
+          </div>
+
+          {bookings.length > 0 ? (
+            <div className="table-container">
+              <table className="bookings-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Booking Name</th>
+                    <th>Customer Name</th>
+                    <th>Customer Number</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookings
+                    .slice((bookingPage - 1) * pageSize, bookingPage * pageSize)
+                    .map((booking) => (
+                      <tr key={booking._id}>
+                        <td>{booking.type}</td>
+                        <td>{booking.bookingName}</td>
+                        <td>{booking.customerName}</td>
+                        <td>{booking.customerNumber}</td>
+                        <td>
+                          <span className={`status-badge status-${booking.status.toLowerCase()}`}>
+                            {booking.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              {bookings.length > pageSize && (
+                <div className="table-pagination">
+                  <button
+                    className="page-btn"
+                    onClick={() => setBookingPage((p) => Math.max(1, p - 1))}
+                    disabled={bookingPage === 1}
+                  >
+                    Prev
+                  </button>
+                  <span className="page-info">Page {bookingPage} of {Math.ceil(bookings.length / pageSize)}</span>
+                  <button
+                    className="page-btn"
+                    onClick={() => setBookingPage((p) => Math.min(Math.ceil(bookings.length / pageSize), p + 1))}
+                    disabled={bookingPage >= Math.ceil(bookings.length / pageSize)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="no-data">
+              <p>No bookings available yet.</p>
             </div>
           )}
         </div>
