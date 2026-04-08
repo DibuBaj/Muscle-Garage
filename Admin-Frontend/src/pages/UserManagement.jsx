@@ -481,6 +481,17 @@ const UserManagement = () => {
     }));
   };
 
+  const clearSearchAndFilters = () => {
+    setSearchQuery('');
+    setFilters({
+      active: false,
+      notSubscribed: false,
+      expired: false,
+      paused: false,
+    });
+    setShowFilterDropdown(false);
+  };
+
   const handleCreateClick = () => {
     setCreateModal({ show: true });
     setCreateFormData({ fullname: '', email: '', phone: '' });
@@ -649,6 +660,15 @@ const UserManagement = () => {
               </div>
             )}
           </div>
+
+          <button
+            className="table-clear-all-btn"
+            onClick={clearSearchAndFilters}
+            disabled={!searchQuery && activeFilterCount === 0}
+            title="Clear search and filters"
+          >
+            Clear
+          </button>
           </div>
           <button
             className="create-user-button"

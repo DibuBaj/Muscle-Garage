@@ -55,6 +55,30 @@
   max-width: 700px;
 }
 
+.subscription-clear-all-btn {
+  padding: 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background-color: #fff;
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.subscription-clear-all-btn:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+.subscription-clear-all-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .search-box {
   position: relative;
   display: flex;
@@ -290,8 +314,7 @@
 
 .page-btn:hover:not(:disabled) {
   border-color: var(--primary-color);
-  color: #fff;
-  background-color: var(--primary-color);
+  color: var(--primary-color);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 

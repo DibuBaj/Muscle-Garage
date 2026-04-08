@@ -285,6 +285,12 @@ const SubscriptionManagement = () => {
     }));
   };
 
+  const clearSearchAndFilters = () => {
+    setSearchQuery('');
+    setFilters({ active: false, inactive: false });
+    setShowFilterDropdown(false);
+  };
+
   const filteredPlans = plans.filter(plan => {
     const matchesSearch = plan.name.toLowerCase().includes(searchQuery.toLowerCase());
     const hasActiveFilter = filters.active || filters.inactive;
@@ -441,6 +447,15 @@ const SubscriptionManagement = () => {
                   </div>
                 )}
               </div>
+
+              <button
+                className="subscription-clear-all-btn"
+                onClick={clearSearchAndFilters}
+                disabled={!searchQuery && activeFiltersCount === 0}
+                title="Clear search and filters"
+              >
+                Clear
+              </button>
             </div>
 
             {/* Create Button */}

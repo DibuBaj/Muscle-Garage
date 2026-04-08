@@ -335,6 +335,18 @@ const SupplementStore = () => {
     new Set(orders.map((order) => order.paymentMethod).filter(Boolean))
   );
 
+  const clearProductSearchAndFilters = () => {
+    setProductSearchQuery('');
+    setProductFilters({ inStock: false, outOfStock: false, category: 'all' });
+    setShowProductFilterDropdown(false);
+  };
+
+  const clearOrderSearchAndFilters = () => {
+    setOrderSearchQuery('');
+    setOrderFilters({ unfulfilled: false, inProgress: false, fulfilled: false, paymentMethod: 'all' });
+    setShowOrderFilterDropdown(false);
+  };
+
   return (
     <div className="supplement-store">
       <div className="header-section">
@@ -439,6 +451,15 @@ const SupplementStore = () => {
                   </div>
                 )}
               </div>
+
+              <button
+                className="table-clear-all-btn"
+                onClick={clearProductSearchAndFilters}
+                disabled={!productSearchQuery && productActiveFiltersCount === 0}
+                title="Clear search and filters"
+              >
+                Clear
+              </button>
             </div>
           </div>
 
@@ -625,6 +646,15 @@ const SupplementStore = () => {
                   </div>
                 )}
               </div>
+
+              <button
+                className="table-clear-all-btn"
+                onClick={clearOrderSearchAndFilters}
+                disabled={!orderSearchQuery && orderActiveFiltersCount === 0}
+                title="Clear search and filters"
+              >
+                Clear
+              </button>
             </div>
           </div>
 

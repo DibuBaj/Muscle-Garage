@@ -623,6 +623,24 @@ const TrainerManagement = () => {
     Number(bookingFilters.expired) +
     Number(bookingFilters.type !== 'all');
 
+  const clearTrainerSearchAndFilters = () => {
+    setTrainerSearchQuery('');
+    setTrainerFilters({ active: false, inactive: false, type: 'all' });
+    setShowTrainerFilterDropdown(false);
+  };
+
+  const clearSessionSearchAndFilters = () => {
+    setSessionSearchQuery('');
+    setSessionFilters({ active: false, inactive: false, full: false, type: 'all', day: 'all' });
+    setShowSessionFilterDropdown(false);
+  };
+
+  const clearBookingSearchAndFilters = () => {
+    setBookingSearchQuery('');
+    setBookingFilters({ active: false, expired: false, type: 'all' });
+    setShowBookingFilterDropdown(false);
+  };
+
   if (loading) {
     return (
       <div className="trainer-management">
@@ -735,6 +753,15 @@ const TrainerManagement = () => {
                   </div>
                 )}
               </div>
+
+              <button
+                className="table-clear-all-btn"
+                onClick={clearTrainerSearchAndFilters}
+                disabled={!trainerSearchQuery && trainerActiveFiltersCount === 0}
+                title="Clear search and filters"
+              >
+                Clear
+              </button>
             </div>
           </div>
 
@@ -917,6 +944,15 @@ const TrainerManagement = () => {
                   </div>
                 )}
               </div>
+
+              <button
+                className="table-clear-all-btn"
+                onClick={clearSessionSearchAndFilters}
+                disabled={!sessionSearchQuery && sessionActiveFiltersCount === 0}
+                title="Clear search and filters"
+              >
+                Clear
+              </button>
             </div>
           </div>
 
@@ -1088,6 +1124,15 @@ const TrainerManagement = () => {
                   </div>
                 )}
               </div>
+
+              <button
+                className="table-clear-all-btn"
+                onClick={clearBookingSearchAndFilters}
+                disabled={!bookingSearchQuery && bookingActiveFiltersCount === 0}
+                title="Clear search and filters"
+              >
+                Clear
+              </button>
             </div>
           </div>
 
