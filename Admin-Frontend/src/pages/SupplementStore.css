@@ -393,7 +393,7 @@
 
 .page-btn:hover:not(:disabled) {
   border-color: var(--primary-color);
-  color: var(--primary-color);
+  color: white !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 
