@@ -740,8 +740,8 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 130,
+    height: 140,
     marginBottom: 16,
     borderRadius: 20,
   },

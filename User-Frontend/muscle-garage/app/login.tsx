@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 140,
+    width: 130,
     height: 140,
     marginBottom: 24,
     borderRadius: 20,
