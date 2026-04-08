@@ -586,110 +586,110 @@ const UserManagement = () => {
         </div>
       )}
 
-      <div className="user-search-container">
-        <div className="search-filter-section">
-          <div className="search-filter-wrapper">
-           
-            <div className="search-box">
-              <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search Member"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button className="clear-search" onClick={() => setSearchQuery('')}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
+      <div className="user-management-content">
+        <div className="user-search-container">
+          <div className="search-filter-section">
+            <div className="search-filter-wrapper">
+
+              <div className="search-box">
+                <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search Member"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button className="clear-search" onClick={() => setSearchQuery('')}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <div className="filter-container" ref={filterRef}>
+                <button
+                  className={`filter-button ${activeFilterCount > 0 ? 'has-filters' : ''} ${showFilterDropdown ? 'dropdown-open' : ''}`}
+                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                  title="Filter users"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                   </svg>
+                  Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
                 </button>
+                {showFilterDropdown && (
+                  <div className="filter-dropdown">
+                  <div className="filter-header">Filter by Status</div>
+                  <label className="filter-option">
+                    <input
+                      type="checkbox"
+                      checked={filters.active}
+                      onChange={() => handleFilterChange('active')}
+                    />
+                    <span>Active</span>
+                  </label>
+                  <label className="filter-option">
+                    <input
+                      type="checkbox"
+                      checked={filters.notSubscribed}
+                      onChange={() => handleFilterChange('notSubscribed')}
+                    />
+                    <span>Not Subscribed</span>
+                  </label>
+                  <label className="filter-option">
+                    <input
+                      type="checkbox"
+                      checked={filters.expired}
+                      onChange={() => handleFilterChange('expired')}
+                    />
+                    <span>Expired</span>
+                  </label>
+                  <label className="filter-option">
+                    <input
+                      type="checkbox"
+                      checked={filters.paused}
+                      onChange={() => handleFilterChange('paused')}
+                    />
+                    <span>Paused</span>
+                  </label>
+                </div>
               )}
             </div>
-            <div className="filter-container" ref={filterRef}>
-              <button
-                className={`filter-button ${activeFilterCount > 0 ? 'has-filters' : ''} ${showFilterDropdown ? 'dropdown-open' : ''}`}
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                title="Filter users"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-              </button>
-              {showFilterDropdown && (
-                <div className="filter-dropdown">
-                <div className="filter-header">Filter by Status</div>
-                <label className="filter-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.active}
-                    onChange={() => handleFilterChange('active')}
-                  />
-                  <span>Active</span>
-                </label>
-                <label className="filter-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.notSubscribed}
-                    onChange={() => handleFilterChange('notSubscribed')}
-                  />
-                  <span>Not Subscribed</span>
-                </label>
-                <label className="filter-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.expired}
-                    onChange={() => handleFilterChange('expired')}
-                  />
-                  <span>Expired</span>
-                </label>
-                <label className="filter-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.paused}
-                    onChange={() => handleFilterChange('paused')}
-                  />
-                  <span>Paused</span>
-                </label>
-              </div>
-            )}
-          </div>
 
-          <button
-            className="table-clear-all-btn"
-            onClick={clearSearchAndFilters}
-            disabled={!searchQuery && activeFilterCount === 0}
-            title="Clear search and filters"
-          >
-            Clear
-          </button>
+            <button
+              className="table-clear-all-btn"
+              onClick={clearSearchAndFilters}
+              disabled={!searchQuery && activeFilterCount === 0}
+              title="Clear search and filters"
+            >
+              Clear
+            </button>
+            </div>
+            <button
+              className="create-user-button"
+              onClick={handleCreateClick}
+              title="Create New User"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Create
+            </button>
           </div>
-          <button
-            className="create-user-button"
-            onClick={handleCreateClick}
-            title="Create New User"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Create
-          </button>
+          <div className="search-results-count">
+            {(searchQuery || activeFilterCount > 0)
+              ? `Found ${filteredUsers.length} of ${users.length} users`
+              : `Total ${users.length} users`}
+          </div>
         </div>
-        <div className="search-results-count">
-          {(searchQuery || activeFilterCount > 0)
-            ? `Found ${filteredUsers.length} of ${users.length} users`
-            : `Total ${users.length} users`}
-        </div>
-      </div>
 
-      <div className="user-management-content">
         {filteredUsers.length === 0 ? (
           <div className="no-users">
             <p>{searchQuery ? 'No users found matching your search' : 'No users found'}</p>
