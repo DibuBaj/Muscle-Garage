@@ -45,6 +45,7 @@ const StoreScreen = () => {
   const [historyBadgeCount, setHistoryBadgeCount] = useState(0);
   const hasLoadedOrdersSnapshotRef = useRef(false);
   const knownOrderStatusesRef = useRef<Record<string, Order['status']>>({});
+  const unseenOrderIdsRef = useRef<Set<string>>(new Set());
   const detailFadeAnim = useRef(new Animated.Value(1)).current;
   const sanitizePhone = (value: string) => value.replace(/\D/g, '');
 
@@ -115,16 +116,18 @@ const StoreScreen = () => {
         const incomingOrders: Order[] = data.orders || [];
         const nextStatuses: Record<string, Order['status']> = {};
         const hadPreviousSnapshot = hasLoadedOrdersSnapshotRef.current;
-        let newEntityCount = 0;
-        let statusChangeCount = 0;
+        let newlyUnseenCount = 0;
 
         incomingOrders.forEach((order) => {
           nextStatuses[order._id] = order.status;
           const previousStatus = knownOrderStatusesRef.current[order._id];
-          if (!previousStatus) {
-            newEntityCount += 1;
-          } else if (previousStatus !== order.status) {
-            statusChangeCount += 1;
+          const isNewOrderEntity = !previousStatus;
+          const isStatusChanged = !!previousStatus && previousStatus !== order.status;
+
+          // Count each unseen order only once until user opens order history.
+          if ((isNewOrderEntity || isStatusChanged) && !unseenOrderIdsRef.current.has(order._id)) {
+            unseenOrderIdsRef.current.add(order._id);
+            newlyUnseenCount += 1;
           }
         });
 
@@ -132,13 +135,16 @@ const StoreScreen = () => {
         hasLoadedOrdersSnapshotRef.current = true;
         setOrders(incomingOrders);
 
-        const nextBadgeIncrement = newEntityCount + statusChangeCount;
-        if (hadPreviousSnapshot && nextBadgeIncrement > 0 && !orderHistoryOpen) {
-          setHistoryBadgeCount((prev) => prev + nextBadgeIncrement);
+        if (hadPreviousSnapshot && newlyUnseenCount > 0 && !orderHistoryOpen) {
+          setHistoryBadgeCount((prev) => prev + newlyUnseenCount);
         }
+
+        return incomingOrders;
       }
+      return [];
     } catch (e: any) {
       console.error('Failed to fetch orders:', e.message);
+      return [];
     } finally {
       if (showLoader) setOrdersLoading(false);
     }
@@ -154,18 +160,29 @@ const StoreScreen = () => {
   };
 
   useEffect(() => {
-    if (params.paymentSuccess === '1') {
+    const handlePaymentSuccess = async () => {
+      if (params.paymentSuccess !== '1') return;
+
       setCart([]);
       setCartOpen(false);
       setCheckoutOpen(false);
       setSelected(null);
-      setConfirmation(null);
-      fetchOrders(false);
-    }
+
+      const latestOrders = await fetchOrders(false);
+      if (latestOrders.length > 0) {
+        const latestOrder = [...latestOrders].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+        setConfirmation({ order: latestOrder });
+      }
+    };
+
+    handlePaymentSuccess();
   }, [params.paymentSuccess, params.paymentTs, fetchOrders]);
 
   useEffect(() => {
     if (orderHistoryOpen && auth.user) {
+      unseenOrderIdsRef.current.clear();
       setHistoryBadgeCount(0);
       fetchOrders();
     }
@@ -955,7 +972,7 @@ const StoreScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Supplements</Text>
         <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => { setHistoryBadgeCount(0); setOrderHistoryOpen(true); }}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => { unseenOrderIdsRef.current.clear(); setHistoryBadgeCount(0); setOrderHistoryOpen(true); }}>
             <Ionicons name="receipt" size={22} color="#fff" />
             {historyBadgeCount > 0 && (
               <View style={styles.cartBadge}>
@@ -1280,8 +1297,8 @@ const styles = StyleSheet.create({
   cardBtnDisabled: { backgroundColor: '#444', opacity: 0.6 },
   cardBtnText: { color: '#000', fontWeight: '800', fontSize: 13, fontFamily: 'Poppins' },
   
-  overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'flex-end', zIndex: 1000, pointerEvents: 'auto' },
-  confirmOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', zIndex: 1002, pointerEvents: 'auto', paddingHorizontal: 16 },
+  overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'flex-end', zIndex: 10000, elevation: 1000, pointerEvents: 'auto' },
+  confirmOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', zIndex: 10001, elevation: 1001, pointerEvents: 'auto', paddingHorizontal: 16 },
   
   detailBox: { width: '100%', height: '95%', backgroundColor: Colors.cardBackground, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
   detailHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 2 },

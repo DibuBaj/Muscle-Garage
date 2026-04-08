@@ -13,6 +13,7 @@ const {
   completeGoogleOnboarding,
   initiateGoogleMobileAuth,
   completeGoogleMobileAuth,
+  checkSignupAvailability,
   adminLogin,
 } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -20,6 +21,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 router.post('/signup', signup);
 router.post('/login', login);
 router.post('/send-otp', sendOTP);
+router.post('/check-signup-availability', checkSignupAvailability);
 router.post('/verify-otp', verifyOTP);
 router.post('/resend-otp', resendOTP);
 router.post('/forgot-password', forgotPassword);

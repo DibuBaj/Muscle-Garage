@@ -21,7 +21,7 @@ export default function AuthEmailScreen() {
       {/* Back Button */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => router.push('/auth-choice')}
+        onPress={() => router.replace('/auth-choice')}
       >
         <Ionicons name="arrow-back" size={24} color={Colors.primary} />
       </TouchableOpacity>
@@ -39,7 +39,7 @@ export default function AuthEmailScreen() {
         {/* Sign In Button */}
         <TouchableOpacity
           style={styles.optionButton}
-          onPress={() => router.push('/login')}
+          onPress={() => router.replace('/login')}
         >
           <View style={styles.optionContent}>
             <View style={styles.optionIcon}>
@@ -58,7 +58,7 @@ export default function AuthEmailScreen() {
         {/* Sign Up Button */}
         <TouchableOpacity
           style={styles.optionButton}
-          onPress={() => router.push('/signup')}
+          onPress={() => router.replace('/signup')}
         >
           <View style={styles.optionContent}>
             <View style={styles.optionIcon}>

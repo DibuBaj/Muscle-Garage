@@ -17,6 +17,8 @@ import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 
+const NEPAL_MOBILE_REGEX = /^9[678]\d{8}$/;
+
 export default function GoogleOnboardingScreen() {
   const router = useRouter();
   const { completeGoogleOnboarding } = useAuth();
@@ -104,9 +106,12 @@ export default function GoogleOnboardingScreen() {
     if (!phone.trim()) {
       newErrors.phone = 'Phone number is required';
       valid = false;
-    } else if (!/^\d{10}$/.test(phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Phone number must be 10 digits';
-      valid = false;
+    } else {
+      const sanitizedPhone = phone.replace(/\D/g, '');
+      if (!NEPAL_MOBILE_REGEX.test(sanitizedPhone)) {
+        newErrors.phone = 'Enter a valid Nepal mobile number (98XXXXXXXX, 97XXXXXXXX, or 96XXXXXXXX)';
+        valid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -139,7 +144,30 @@ export default function GoogleOnboardingScreen() {
       router.replace('/(tabs)');
     } catch (error: any) {
       setLoading(false);
-      const errorMsg = error.message || 'Onboarding failed';
+      const errorMsg = error?.message || 'Onboarding failed';
+
+      if (/username already exists/i.test(errorMsg)) {
+        setStep(1);
+        setErrors((prev: any) => ({
+          ...prev,
+          username: 'Username already exists. Please choose another username.',
+        }));
+        setErrorMessage('Please pick a different username to continue.');
+        return;
+      }
+
+      if (/date of birth/i.test(errorMsg)) {
+        setStep(2);
+      }
+
+      if (/phone/i.test(errorMsg)) {
+        setStep(1);
+        setErrors((prev: any) => ({
+          ...prev,
+          phone: 'Enter a valid Nepal mobile number (98XXXXXXXX, 97XXXXXXXX, or 96XXXXXXXX)',
+        }));
+      }
+
       setErrorMessage(errorMsg);
     }
   };

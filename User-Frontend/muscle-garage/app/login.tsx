@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isAuthenticating } = useAuth();
+  const { login, isAuthenticating, user, loading } = useAuth();
   const scrollViewRef = React.useRef<ScrollView>(null);
   const inputRefs = React.useRef<Record<string, View>>({});
   const [email, setEmail] = useState('');
@@ -34,6 +34,12 @@ export default function LoginScreen() {
 
     return () => keyboardDidHideListener.remove();
   }, []);
+
+  React.useEffect(() => {
+    if (!loading && user) {
+      router.replace('/(tabs)');
+    }
+  }, [loading, user, router]);
 
   const handleInputFocus = (fieldName: string) => {
     setTimeout(() => {
@@ -104,7 +110,7 @@ export default function LoginScreen() {
         {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.push('/auth-choice')}
+          onPress={() => router.replace('/auth-choice')}
         >
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
@@ -187,14 +193,14 @@ export default function LoginScreen() {
 
           <TouchableOpacity 
             style={styles.forgotPasswordButton}
-            onPress={() => router.push('/forgot-password' as any)}
+            onPress={() => router.replace('/forgot-password' as any)}
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
 
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>Don&apos;t have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/signup' as any)}>
+            <TouchableOpacity onPress={() => router.replace('/signup' as any)}>
               <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>

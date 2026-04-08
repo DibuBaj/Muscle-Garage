@@ -14,6 +14,67 @@ const {
   resolveGoogleAuth,
 } = require('../utils/authHelpers');
 
+const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizePhone = (value = '') => String(value).replace(/\D/g, '');
+
+exports.checkSignupAvailability = async (req, res) => {
+  const username = String(req.body?.username || '').trim();
+  const email = String(req.body?.email || '').trim();
+  const phone = normalizePhone(req.body?.phone || '');
+
+  if (!username || !email || !phone) {
+    return res.status(400).json({
+      success: false,
+      message: 'username, email, and phone are required',
+    });
+  }
+
+  try {
+    const usernameRegex = new RegExp(`^${escapeRegex(username)}$`, 'i');
+    const emailRegex = new RegExp(`^${escapeRegex(email)}$`, 'i');
+
+    const [
+      userByUsername,
+      userByEmail,
+      userByPhone,
+      otpByUsername,
+      otpByEmail,
+      otpByPhone,
+    ] = await Promise.all([
+      User.findOne({ username: usernameRegex }).select('_id').lean(),
+      User.findOne({ email: emailRegex }).select('_id').lean(),
+      User.findOne({ phone }).select('_id').lean(),
+      OTP.findOne({ 'userData.username': usernameRegex }).select('_id').lean(),
+      OTP.findOne({ email: emailRegex }).select('_id').lean(),
+      OTP.findOne({ 'userData.phone': phone }).select('_id').lean(),
+    ]);
+
+    const available = {
+      username: !userByUsername && !otpByUsername,
+      email: !userByEmail && !otpByEmail,
+      phone: !userByPhone && !otpByPhone,
+    };
+
+    const errors = {};
+    if (!available.username) errors.username = 'Username already exists';
+    if (!available.email) errors.email = 'Email already exists';
+    if (!available.phone) errors.phone = 'Phone number already exists';
+
+    return res.status(200).json({
+      success: available.username && available.email && available.phone,
+      available,
+      errors,
+    });
+  } catch (err) {
+    console.error('Check signup availability error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to validate signup availability',
+    });
+  }
+};
+
 exports.sendOTP = async (req, res) => {
   const { username, email, fullname, phone, password, dateOfBirth, age, weight } = req.body;
 

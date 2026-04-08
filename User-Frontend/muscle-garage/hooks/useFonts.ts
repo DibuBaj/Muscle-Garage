@@ -2,7 +2,10 @@ import { useFonts as useExpoFonts, Poppins_300Light, Poppins_400Regular, Poppins
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
-SplashScreen.preventAutoHideAsync();
+// Prevent auto-hide at startup; safely ignore environments where native splash is unavailable.
+void SplashScreen.preventAutoHideAsync().catch(() => {
+  // No-op: some navigation/view-controller transitions may not have a registered native splash.
+});
 
 export function useFonts() {
   const [fontsLoaded, fontError] = useExpoFonts({
@@ -17,9 +20,11 @@ export function useFonts() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync().catch(() => {
+        // No-op: avoid uncaught promise when splash is not registered for current view controller.
+      });
     }
   }, [fontsLoaded, fontError]);
 
-  return fontsLoaded || false;
+  return fontsLoaded || !!fontError;
 }

@@ -23,11 +23,14 @@ import { API_URL } from '@/constants/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const NEPAL_MOBILE_REGEX = /^9[678]\d{8}$/;
+
 export default function SignupScreen() {
   const router = useRouter();
   const { sendOTP, isAuthenticating, error: authError } = useAuth();
   const [step, setStep] = useState(1);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [googleError, setGoogleError] = useState('');
   const [signupError, setSignupError] = useState('');
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -148,9 +151,12 @@ export default function SignupScreen() {
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
       valid = false;
-    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Phone number must be 10 digits';
-      valid = false;
+    } else {
+      const sanitizedPhone = formData.phone.replace(/\D/g, '');
+      if (!NEPAL_MOBILE_REGEX.test(sanitizedPhone)) {
+        newErrors.phone = 'Enter a valid Nepal mobile number (98XXXXXXXX, 97XXXXXXXX, or 96XXXXXXXX)';
+        valid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -202,11 +208,55 @@ export default function SignupScreen() {
     return valid;
   };
 
-  const handleNext = () => {
-    if (step === 1 && validateStep1()) {
-      setStep(2);
-      setErrors({});
-    } else if (step === 2 && validateStep2()) {
+  const handleNext = async () => {
+    if (step === 1) {
+      if (!validateStep1()) return;
+
+      try {
+        setCheckingAvailability(true);
+        setSignupError('');
+
+        const response = await fetch(`${API_URL}/auth/check-signup-availability`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: formData.username.trim(),
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setSignupError(data?.message || 'Could not validate account details. Please try again.');
+          return;
+        }
+
+        if (data?.success) {
+          setStep(2);
+          setErrors({});
+          return;
+        }
+
+        if (data?.errors) {
+          setErrors((prev: any) => ({ ...prev, ...data.errors }));
+          setSignupError('Please fix highlighted fields before continuing.');
+          return;
+        }
+
+        setSignupError(data?.message || 'Some details are already in use.');
+      } catch (error) {
+        console.error('Signup availability check failed:', error);
+        setSignupError('Unable to verify details right now. Please check your connection and try again.');
+      } finally {
+        setCheckingAvailability(false);
+      }
+
+      return;
+    }
+
+    if (step === 2 && validateStep2()) {
       setStep(3);
       setErrors({});
     }
@@ -458,11 +508,18 @@ export default function SignupScreen() {
               {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.button, styles.nextButton, styles.fullWidthButton]}
+                style={[styles.button, styles.nextButton, styles.fullWidthButton, checkingAvailability && styles.buttonDisabled]}
                 onPress={handleNext}
+                disabled={checkingAvailability}
               >
-                <Text style={styles.buttonText}>Next</Text>
-                <Ionicons name="arrow-forward" size={20} color={Colors.white} style={styles.buttonIcon} />
+                {checkingAvailability ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Next</Text>
+                    <Ionicons name="arrow-forward" size={20} color={Colors.white} style={styles.buttonIcon} />
+                  </>
+                )}
               </TouchableOpacity>
             </>
           )}

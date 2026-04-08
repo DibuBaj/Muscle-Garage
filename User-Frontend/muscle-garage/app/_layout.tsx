@@ -45,7 +45,15 @@ export default function RootLayout() {
         <Stack.Screen name="verify-otp" options={{ headerShown: false }} />
         <Stack.Screen name="google-auth-callback" options={{ headerShown: false }} />
         <Stack.Screen name="payment-callback" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            headerShown: false,
+            // Prevent iOS swipe-back to previous auth routes once user is in the main app tabs.
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+          }}
+        />
         <Stack.Screen
           name="modal"
           options={{

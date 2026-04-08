@@ -120,7 +120,7 @@ export default function AuthChoiceScreen() {
             {/* Email */}
             <TouchableOpacity
               style={styles.emailButton}
-              onPress={() => router.push('/login')}
+              onPress={() => router.replace('/login')}
               disabled={loading}
             >
               <Ionicons name="mail-outline" size={22} color={Colors.primary} />
@@ -130,7 +130,7 @@ export default function AuthChoiceScreen() {
             {/* Signup */}
             <View style={styles.signupContainer}>
               <Text style={styles.signupText}>Don&apos;t have an account? </Text>
-              <TouchableOpacity onPress={() => router.push('/signup')}>
+              <TouchableOpacity onPress={() => router.replace('/signup')}>
                 <Text style={styles.signupLink}>Sign up</Text>
               </TouchableOpacity>
             </View>
