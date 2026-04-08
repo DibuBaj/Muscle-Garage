@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Subscription = require('../models/Subscription');
-const OTP = require('../models/OTP');
+const DeleteAccountOTP = require('../models/DeleteAccountOTP');
 const bcrypt = require('bcryptjs');
 const cloudinary = require('../config/cloudinary');
 const multer = require('multer');
@@ -225,19 +225,16 @@ exports.sendDeleteAccountOTP = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    await OTP.deleteMany({
+    await DeleteAccountOTP.deleteMany({
       email: user.email,
-      'userData.deleteAccount': true,
+      userId: String(user._id),
     });
 
     const otp = generateOTP();
-    const otpDoc = new OTP({
+    const otpDoc = new DeleteAccountOTP({
       email: user.email,
+      userId: String(user._id),
       otp,
-      userData: {
-        deleteAccount: true,
-        userId: String(user._id),
-      },
     });
 
     await otpDoc.save();
@@ -270,20 +267,19 @@ exports.verifyDeleteAccountOTP = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const otpDoc = await OTP.findOne({
+    const otpDoc = await DeleteAccountOTP.findOne({
       email: user.email,
+      userId: String(user._id),
       otp,
-      'userData.deleteAccount': true,
-      'userData.userId': String(user._id),
     });
 
     if (!otpDoc) {
       return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
     }
 
-    await OTP.deleteMany({
+    await DeleteAccountOTP.deleteMany({
       email: user.email,
-      'userData.deleteAccount': true,
+      userId: String(user._id),
     });
 
     if (user.profilePicture) {

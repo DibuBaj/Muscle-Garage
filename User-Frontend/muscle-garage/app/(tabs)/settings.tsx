@@ -1028,6 +1028,7 @@ export default function SettingsScreen() {
             <Text style={styles.deleteOtpSubtitle}>
               Enter the OTP sent to your email to permanently delete your account.
             </Text>
+            <Text style={styles.deleteOtpHint}>This OTP is valid for 15 minutes.</Text>
 
             <TextInput
               style={styles.deleteOtpInput}
@@ -1065,6 +1066,18 @@ export default function SettingsScreen() {
                 )}
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={[styles.resendOtpButton, sendingDeleteOtp && styles.buttonDisabled]}
+              onPress={sendDeleteAccountOtp}
+              disabled={sendingDeleteOtp || deletingAccount}
+            >
+              {sendingDeleteOtp ? (
+                <ActivityIndicator size="small" color={Colors.error} />
+              ) : (
+                <Text style={styles.resendOtpText}>Resend Code</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1480,6 +1493,12 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontFamily: 'Poppins',
   },
+  deleteOtpHint: {
+    color: Colors.darkGray,
+    fontSize: 12,
+    marginTop: 8,
+    fontFamily: 'Poppins',
+  },
   deleteOtpInput: {
     marginTop: 14,
     backgroundColor: Colors.inputBackground,
@@ -1500,5 +1519,21 @@ const styles = StyleSheet.create({
   },
   deleteConfirmButton: {
     backgroundColor: Colors.error,
+  },
+  resendOtpButton: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.error,
+    backgroundColor: 'rgba(196, 23, 23, 0.08)',
+  },
+  resendOtpText: {
+    color: Colors.error,
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Poppins',
   },
 });
