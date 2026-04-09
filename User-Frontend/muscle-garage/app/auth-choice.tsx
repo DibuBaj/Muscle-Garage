@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: Colors.background, paddingHorizontal: 24, paddingVertical: 40 },
   content: { flex: 1, justifyContent: 'center' },
   logoSection: { alignItems: 'center', marginBottom: 60, marginTop: 20 },
-  logo: { width: 140, height: 140, marginBottom: 24, borderRadius: 20 },
+  logo: { width: 130, height: 138, marginBottom: 24, borderRadius: 20 },
   mainTitle: { fontSize: 32, fontWeight: 'bold', color: Colors.white, marginBottom: 8, fontFamily: 'Poppins' },
   subtitle: { fontSize: 16, color: Colors.lightGray, textAlign: 'center', fontFamily: 'Poppins' },
   errorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(196,23,23,0.1)', borderRadius: 12, padding: 12, marginBottom: 24, borderWidth: 1, borderColor: Colors.error, gap: 12 },
