@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { API_URL } from '@/constants/api';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
 import Animated from 'react-native-reanimated';
 import { useLiquidTabBarScrollHandler } from '@/components/shared/tabBarVisibility';
 
@@ -72,6 +73,7 @@ interface ActiveBooking {
 
 export default function BookingScreen() {
   const { token } = useAuth();
+  const router = useRouter();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -303,6 +305,10 @@ export default function BookingScreen() {
     setSelectedSession(null);
   };
 
+  const handleGoBack = () => {
+    router.back();
+  };
+
   const handleViewCertification = async () => {
     if (selectedTrainer?.certification) {
       const certPath = typeof selectedTrainer.certification === 'string' 
@@ -429,7 +435,11 @@ export default function BookingScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+            <Ionicons name="arrow-back" size={24} color={Colors.primary} />
+          </TouchableOpacity>
           <Text style={styles.title}>Book Trainers & Sessions</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         {error && (
@@ -830,12 +840,23 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
     marginTop: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 12,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: Colors.white,
     fontFamily: 'Poppins',
+    flex: 1,
+  },
+  headerSpacer: {
+    width: 40,
   },
   errorBanner: {
     flexDirection: 'row',

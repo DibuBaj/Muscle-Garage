@@ -74,10 +74,16 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="workout"
+          options={{
+            title: 'Workout',
+            tabBarIcon: ({ color, size }) => <Ionicons name="barbell" size={size} color={color} />,
+          }}
+        />
+        <Tabs.Screen
           name="booking"
           options={{
-            title: 'Booking',
-            tabBarIcon: ({ color, size }) => <Ionicons name="book" size={size} color={color} />,
+            href: null,
           }}
         />
         <Tabs.Screen
@@ -127,14 +133,16 @@ export default function TabLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="booking">
-        <Label>Booking</Label>
+      <NativeTabs.Trigger name="workout">
+        <Label>Workout</Label>
         <Icon
-          sf={{ default: 'book', selected: 'book.fill' }}
+          sf={{ default: 'figure.strengthtraining.traditional', selected: 'figure.strengthtraining.traditional' }}
           selectedColor={Colors.primary}
-          androidSrc={<VectorIcon family={Ionicons} name="book" />}
+          androidSrc={<VectorIcon family={Ionicons} name="barbell" />}
         />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="booking" hidden />
 
       <NativeTabs.Trigger name="settings">
         <Label>Settings</Label>

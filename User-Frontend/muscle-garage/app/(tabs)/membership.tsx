@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as ExpoLinking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
@@ -51,6 +51,7 @@ interface Subscription {
 
 export default function MembershipScreen() {
   const { token } = useAuth();
+  const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -61,6 +62,10 @@ export default function MembershipScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [pauseModalVisible, setPauseModalVisible] = useState(false);
   const scrollHandler = useLiquidTabBarScrollHandler();
+
+  const handleViewBookings = () => {
+    router.push('/bookings');
+  };
 
   const fetchPlans = async () => {
     try {
@@ -386,6 +391,15 @@ export default function MembershipScreen() {
                 )}
               </TouchableOpacity>
             )}
+
+            {/* View Bookings Button */}
+            <TouchableOpacity
+              style={styles.viewBookingsButton}
+              onPress={handleViewBookings}
+            >
+              <Ionicons name="calendar-outline" size={18} color={Colors.white} style={styles.bookingButtonIcon} />
+              <Text style={styles.viewBookingsButtonText}>View Bookings</Text>
+            </TouchableOpacity>
           </>
         )}
       </Animated.ScrollView>
@@ -698,5 +712,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginVertical: 16,
+  },
+  viewBookingsButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  bookingButtonIcon: {
+    marginRight: 4,
+  },
+  viewBookingsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.white,
+    fontFamily: 'Poppins',
   },
 });

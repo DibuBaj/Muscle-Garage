@@ -160,7 +160,7 @@ export default function DashboardScreen() {
   };
 
   const handleBookingPress = () => {
-    router.push('/(tabs)/booking');
+    router.push('/bookings');
   };
 
   const handleLogout = async () => {
