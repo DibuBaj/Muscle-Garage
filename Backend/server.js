@@ -13,6 +13,7 @@ const productRoutes = require('./routes/product');
 const orderRoutes = require('./routes/order');
 const paymentRoutes = require('./routes/payment');
 const analyticsRoutes = require('./routes/analytics');
+const aiRoutes = require('./routes/ai');
 const { decreaseDaysDaily } = require('./controllers/subscriptionController');
 const SubscriptionPlan = require('./models/SubscriptionPlan');
 const cloudinary = require('./config/cloudinary');
@@ -67,6 +68,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Muscle Garage API is running' });

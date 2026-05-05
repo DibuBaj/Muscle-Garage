@@ -16,12 +16,21 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useWorkoutLog } from '@/context/WorkoutLogContext';
+import { useAuth } from '@/context/AuthContext';
 import { ExerciseBuilderCard } from '@/features/workout-log/components/ExerciseBuilderCard';
+import {
+  AIGenerateFormValues,
+  AIGenerateWorkoutModal,
+} from '@/features/workout-log/components/AIGenerateWorkoutModal';
 import { ExercisePickerModal } from '@/features/workout-log/components/ExercisePickerModal';
 import { WorkoutButton } from '@/features/workout-log/components/WorkoutButton';
 import { WorkoutInput } from '@/features/workout-log/components/WorkoutInput';
 import { useWorkoutSessionBuilder } from '@/features/workout-log/hooks/useWorkoutSessionBuilder';
 import { validateWorkoutDraft } from '@/features/workout-log/hooks/useWorkoutValidation';
+import { exerciseService } from '@/features/workout-log/services/exerciseService';
+import { WorkoutSessionDraft } from '@/features/workout-log/types';
+import axios from 'axios';
+import { API_URL } from '@/constants/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -29,8 +38,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 export default function CreateWorkoutSessionScreen() {
   const router = useRouter();
+  const { token, user } = useAuth();
   const { createWorkoutSession } = useWorkoutLog();
   const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const [showAIGenerate, setShowAIGenerate] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -45,7 +57,37 @@ export default function CreateWorkoutSessionScreen() {
     removeExercise,
     draft,
     reset,
+    hydrate,
   } = useWorkoutSessionBuilder();
+
+  const calculateAge = (dateOfBirth?: string) => {
+    if (!dateOfBirth) {
+      return '';
+    }
+
+    const dob = new Date(dateOfBirth);
+    if (Number.isNaN(dob.getTime())) {
+      return '';
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const hasHadBirthdayThisYear =
+      today.getMonth() > dob.getMonth() ||
+      (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+
+    if (!hasHadBirthdayThisYear) {
+      age -= 1;
+    }
+
+    return age > 0 ? String(age) : '';
+  };
+
+  const aiDefaultAge = useMemo(() => calculateAge(user?.dateOfBirth), [user?.dateOfBirth]);
+  const aiDefaultWeight = useMemo(
+    () => (typeof user?.weight === 'number' ? String(user.weight) : ''),
+    [user?.weight]
+  );
 
   useEffect(() => {
     setErrors([]);
@@ -77,6 +119,62 @@ export default function CreateWorkoutSessionScreen() {
     }
   };
 
+  const handleAIGenerate = async (values: AIGenerateFormValues) => {
+    setAiLoading(true);
+    try {
+      if (!token) {
+        setErrors(['You must be logged in to use AI generation.']);
+        return;
+      }
+
+      const availableExercises = await exerciseService.getExercises();
+      if (!availableExercises.length) {
+        setErrors(['No exercises are available right now. Please try again later.']);
+        return;
+      }
+
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      const response = await axios.post(
+        `${API_URL}/ai/generate-workout`,
+        {
+          age: values.age,
+          weight: values.weight,
+          goal: values.goal,
+          muscleGroups: values.muscleGroups,
+          availableExercises,
+        },
+        {
+          headers: {
+            Authorization: authHeader,
+          },
+        }
+      );
+
+      const generatedDraft = response.data?.draft as WorkoutSessionDraft | undefined;
+      if (!generatedDraft || !generatedDraft.title || !Array.isArray(generatedDraft.exercises)) {
+        setErrors(['AI returned an invalid workout plan. Please try again.']);
+        return;
+      }
+
+      if (generatedDraft.exercises.length === 0) {
+        setErrors(['AI could not generate exercises for your selected categories.']);
+        return;
+      }
+
+      animateLayout();
+      hydrate(generatedDraft);
+      setShowAIGenerate(false);
+      Alert.alert('Workout Ready', 'AI has generated a workout session. Review and save it.');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        'Failed to generate workout with AI. Please check your inputs and try again.';
+      setErrors([message]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
@@ -100,6 +198,11 @@ export default function CreateWorkoutSessionScreen() {
             label="Add Exercise"
             variant="secondary"
             onPress={() => setShowExercisePicker(true)}
+          />
+
+          <WorkoutButton
+            label="AI Generate"
+            onPress={() => setShowAIGenerate(true)}
           />
 
           {errors.length > 0 && (
@@ -149,6 +252,15 @@ export default function CreateWorkoutSessionScreen() {
           animateLayout();
           addExercises(selectedExercises);
         }}
+      />
+
+      <AIGenerateWorkoutModal
+        visible={showAIGenerate}
+        loading={aiLoading}
+        initialAge={aiDefaultAge}
+        initialWeight={aiDefaultWeight}
+        onClose={() => setShowAIGenerate(false)}
+        onSubmit={handleAIGenerate}
       />
     </SafeAreaView>
   );
