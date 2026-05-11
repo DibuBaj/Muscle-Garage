@@ -29,14 +29,14 @@ const repsRangeFromGoal = (goal) => {
   return { min: 6, max: 10 };
 };
 
-const generateFallbackDraft = ({ age, weight, goal, availableExercises }) => {
+const generateFallbackDraft = ({ age, weight, goal, experience, availableExercises }) => {
   const picked = availableExercises.slice(0, 6);
   const baseWeight = baseWeightFromGoal(Number(weight), goal);
   const repsRange = repsRangeFromGoal(goal);
   const ageLabel = age ? `Age ${age}` : 'Custom';
 
   return {
-    title: `${goal || 'AI'} Session (${ageLabel})`,
+    title: `${goal || 'AI'} Session - ${experience || 'Custom'} (${ageLabel})`,
     exercises: picked.map((exercise, index) => {
       const workingWeight = Math.max(5, baseWeight + index * 2);
 
@@ -54,18 +54,19 @@ const generateFallbackDraft = ({ age, weight, goal, availableExercises }) => {
   };
 };
 
-const buildPrompt = ({ age, weight, goal, muscleGroups, allowedExercises }) => {
+const buildPrompt = ({ age, weight, goal, experience, muscleGroups, allowedExercises }) => {
   const exerciseCatalog = allowedExercises
     .map((exercise) => `- id: ${exercise.id} | name: ${exercise.name} | group: ${exercise.muscleGroup}`)
     .join('\n');
 
   return `You are a workout planning assistant.
-Create one safe beginner-intermediate workout session using ONLY the allowed exercises.
+Create one safe ${experience || 'intermediate'} workout session using ONLY the allowed exercises.
 
 User profile:
 - age: ${age || 'unknown'}
 - weightKg: ${weight || 'unknown'}
 - goal: ${goal}
+- experience level: ${experience || 'unknown'}
 - target muscle groups: ${muscleGroups.join(', ')}
 
 Rules:
@@ -145,11 +146,15 @@ const parseAiResponseToDraft = (rawText, allowedExerciseMap) => {
   };
 };
 
-const validateRequest = ({ age, weight, goal, muscleGroups, availableExercises }) => {
+const validateRequest = ({ age, weight, goal, experience, muscleGroups, availableExercises }) => {
   const errors = [];
 
   if (!goal || typeof goal !== 'string' || !goal.trim()) {
     errors.push('Goal is required.');
+  }
+
+  if (!experience || typeof experience !== 'string' || !experience.trim()) {
+    errors.push('Experience level is required.');
   }
 
   const ageNumber = Number(age);
@@ -174,8 +179,8 @@ const validateRequest = ({ age, weight, goal, muscleGroups, availableExercises }
 };
 
 exports.generateWorkoutSession = async (req, res) => {
-  const { age, weight, goal, muscleGroups, availableExercises } = req.body || {};
-  const errors = validateRequest({ age, weight, goal, muscleGroups, availableExercises });
+  const { age, weight, goal, experience, muscleGroups, availableExercises } = req.body || {};
+  const errors = validateRequest({ age, weight, goal, experience, muscleGroups, availableExercises });
 
   if (errors.length > 0) {
     return res.status(400).json({
@@ -218,7 +223,7 @@ exports.generateWorkoutSession = async (req, res) => {
 
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
-    const fallbackDraft = generateFallbackDraft({ age, weight, goal, availableExercises: allowedExercises });
+    const fallbackDraft = generateFallbackDraft({ age, weight, goal, experience, availableExercises: allowedExercises });
     return res.json({
       success: true,
       source: 'fallback',
@@ -235,6 +240,7 @@ exports.generateWorkoutSession = async (req, res) => {
       age,
       weight,
       goal,
+      experience,
       muscleGroups: normalizedMuscleGroups,
       allowedExercises,
     });
@@ -251,7 +257,7 @@ exports.generateWorkoutSession = async (req, res) => {
     });
   } catch (error) {
     console.error('AI generation failed:', error.message);
-    const fallbackDraft = generateFallbackDraft({ age, weight, goal, availableExercises: allowedExercises });
+    const fallbackDraft = generateFallbackDraft({ age, weight, goal, experience, availableExercises: allowedExercises });
 
     return res.json({
       success: true,

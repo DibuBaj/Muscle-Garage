@@ -129,8 +129,10 @@ const styles = StyleSheet.create({
   },
   setField: {
     flex: 1,
+       minWidth: 0,    
   },
   setInput: {
+    width: '100%',
     height: 44,
     borderRadius: 10,
     borderWidth: 1,

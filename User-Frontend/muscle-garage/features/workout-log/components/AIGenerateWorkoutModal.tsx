@@ -21,6 +21,8 @@ const GOAL_OPTIONS = [
   'Endurance',
 ];
 
+const EXPERIENCE_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
+
 const MUSCLE_OPTIONS: Array<{ label: string; value: MuscleGroup }> = [
   { label: 'Chest', value: 'chest' },
   { label: 'Back', value: 'back' },
@@ -34,6 +36,7 @@ export type AIGenerateFormValues = {
   age: string;
   weight: string;
   goal: string;
+  experience: string;
   muscleGroups: MuscleGroup[];
 };
 
@@ -57,12 +60,13 @@ export function AIGenerateWorkoutModal({
   const [age, setAge] = useState(initialAge ?? '');
   const [weight, setWeight] = useState(initialWeight ?? '');
   const [goal, setGoal] = useState('');
+  const [experience, setExperience] = useState('');
   const [muscleGroups, setMuscleGroups] = useState<MuscleGroup[]>([]);
   const [error, setError] = useState('');
 
   const canSubmit = useMemo(
-    () => goal.trim().length > 0 && muscleGroups.length > 0,
-    [goal, muscleGroups]
+    () => goal.trim().length > 0 && experience.trim().length > 0 && muscleGroups.length > 0,
+    [goal, experience, muscleGroups]
   );
 
   const handleToggleGroup = (group: MuscleGroup) => {
@@ -89,7 +93,12 @@ export function AIGenerateWorkoutModal({
     }
 
     if (!goal.trim()) {
-      setError('Please select or enter your goal.');
+      setError('Please select a goal.');
+      return;
+    }
+
+    if (!experience.trim()) {
+      setError('Please select your experience level.');
       return;
     }
 
@@ -99,7 +108,7 @@ export function AIGenerateWorkoutModal({
     }
 
     setError('');
-    onSubmit({ age: age.trim(), weight: weight.trim(), goal: goal.trim(), muscleGroups });
+    onSubmit({ age: age.trim(), weight: weight.trim(), goal: goal.trim(), experience: experience.trim(), muscleGroups });
   };
 
   const handleClose = () => {
@@ -107,6 +116,7 @@ export function AIGenerateWorkoutModal({
     setAge(initialAge ?? '');
     setWeight(initialWeight ?? '');
     setGoal('');
+    setExperience('');
     setMuscleGroups([]);
     onClose();
   };
@@ -150,21 +160,32 @@ export function AIGenerateWorkoutModal({
 
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Goal</Text>
-              <TextInput
-                value={goal}
-                onChangeText={setGoal}
-                placeholder="Weight Loss, Muscle Gain, ..."
-                placeholderTextColor={Colors.darkGray}
-                style={styles.input}
-              />
-              <View style={styles.goalWrap}>
+              <View style={styles.groupWrap}>
                 {GOAL_OPTIONS.map((item) => {
-                  const active = goal.toLowerCase() === item.toLowerCase();
+                  const active = goal === item;
                   return (
                     <TouchableOpacity
                       key={item}
                       style={[styles.pill, active && styles.pillActive]}
                       onPress={() => setGoal(item)}
+                    >
+                      <Text style={[styles.pillText, active && styles.pillTextActive]}>{item}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.fieldWrap}>
+              <Text style={styles.label}>Experience Level</Text>
+              <View style={styles.groupWrap}>
+                {EXPERIENCE_OPTIONS.map((item) => {
+                  const active = experience === item;
+                  return (
+                    <TouchableOpacity
+                      key={item}
+                      style={[styles.pill, active && styles.pillActive]}
+                      onPress={() => setExperience(item)}
                     >
                       <Text style={[styles.pillText, active && styles.pillTextActive]}>{item}</Text>
                     </TouchableOpacity>
@@ -263,11 +284,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
     paddingHorizontal: 14,
     fontSize: 15,
-  },
-  goalWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   groupWrap: {
     flexDirection: 'row',

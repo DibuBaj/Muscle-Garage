@@ -140,6 +140,7 @@ export default function CreateWorkoutSessionScreen() {
           age: values.age,
           weight: values.weight,
           goal: values.goal,
+          experience: values.experience,
           muscleGroups: values.muscleGroups,
           availableExercises,
         },
