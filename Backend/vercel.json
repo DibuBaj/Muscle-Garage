@@ -8,11 +8,7 @@
     ],
     "functions": {
         "server.js": {
-            "includeFiles": [
-                "node_modules/mongodb/lib/resource_management.js",
-                "node_modules/mongoose/lib/helpers/promiseOrCallback.js",
-                "node_modules/mongoose/lib/**"
-            ]
+            "includeFiles": "node_modules/{mongoose,mongodb}/lib/**"
         }
     },
     "routes": [
