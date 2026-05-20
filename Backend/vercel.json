@@ -3,14 +3,15 @@
     "builds": [
         {
             "src": "server.js",
-            "use": "@vercel/node"
+            "use": "@vercel/node",
+            "config": {
+                "includeFiles": [
+                    "node_modules/mongodb/lib/resource_management.js",
+                    "node_modules/mongoose/lib/helpers/promiseOrCallback.js"
+                ]
+            }
         }
     ],
-    "functions": {
-        "server.js": {
-            "includeFiles": "node_modules/{mongoose,mongodb}/lib/**"
-        }
-    },
     "routes": [
         {
             "src": "/(.*)",
