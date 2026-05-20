@@ -6,8 +6,8 @@
             "use": "@vercel/node",
             "config": {
                 "includeFiles": [
-                    "node_modules/mongodb/lib/resource_management.js",
-                    "node_modules/mongoose/lib/helpers/promiseOrCallback.js"
+                    "node_modules/mongoose/**",
+                    "node_modules/mongodb/**"
                 ]
             }
         }
