@@ -28,13 +28,27 @@ import { WorkoutInput } from '@/features/workout-log/components/WorkoutInput';
 import { useWorkoutSessionBuilder } from '@/features/workout-log/hooks/useWorkoutSessionBuilder';
 import { validateWorkoutDraft } from '@/features/workout-log/hooks/useWorkoutValidation';
 import { exerciseService } from '@/features/workout-log/services/exerciseService';
-import { WorkoutSessionDraft } from '@/features/workout-log/types';
+import { ExerciseLevel, WorkoutSessionDraft } from '@/features/workout-log/types';
 import axios from 'axios';
 import { API_URL } from '@/constants/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+const normalizeExperienceLevel = (experience: string): ExerciseLevel => {
+  const normalized = experience.trim().toLowerCase();
+
+  if (normalized.startsWith('beginner')) {
+    return 'beginner';
+  }
+
+  if (normalized.startsWith('advanced')) {
+    return 'advanced';
+  }
+
+  return 'intermediate';
+};
 
 export default function CreateWorkoutSessionScreen() {
   const router = useRouter();
@@ -127,7 +141,11 @@ export default function CreateWorkoutSessionScreen() {
         return;
       }
 
-      const availableExercises = await exerciseService.getExercises();
+      const experienceLevel = normalizeExperienceLevel(values.experience);
+      const levelExercises = await exerciseService.getExercises({ level: experienceLevel });
+      const availableExercises = levelExercises.length
+        ? levelExercises
+        : await exerciseService.getExercises();
       if (!availableExercises.length) {
         setErrors(['No exercises are available right now. Please try again later.']);
         return;

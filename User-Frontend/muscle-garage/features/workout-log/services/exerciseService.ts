@@ -1,119 +1,121 @@
-import { ExerciseDefinition, ExerciseQuery } from '@/features/workout-log/types';
+import { ExerciseDefinition, ExerciseLevel, ExerciseQuery } from '@/features/workout-log/types';
 
 const WGER_EXERCISEINFO_ENDPOINT = 'https://wger.de/api/v2/exerciseinfo/';
 const PAGE_SIZE = 200;
 const MAX_PAGES = 4;
 const ENGLISH_LANGUAGE_ID = 2;
 
-const GROUP_NAMES = {
+const GROUP_EXERCISES: Record<ExerciseDefinition['muscleGroup'], Array<{ name: string; level: ExerciseLevel }>> = {
   chest: [
-    'Barbell Bench Press',
-    'Dumbbell Bench Press',
-    'Incline Bench Press',
-    'Decline Bench Press',
-    'Incline Dumbbell Press',
-    'Cable Fly',
-    'Pec Deck Fly',
-    'Push Up',
-    'Weighted Push Up',
-    'Close Grip Push Up',
-    'Chest Dip',
-    'Machine Chest Press',
-    'Single Arm Cable Press',
-    'Svend Press',
-    'Landmine Press',
+    { name: 'Push Up', level: 'beginner' },
+    { name: 'Machine Chest Press', level: 'beginner' },
+    { name: 'Dumbbell Bench Press', level: 'beginner' },
+    { name: 'Incline Dumbbell Press', level: 'beginner' },
+    { name: 'Barbell Bench Press', level: 'intermediate' },
+    { name: 'Incline Bench Press', level: 'intermediate' },
+    { name: 'Cable Fly', level: 'intermediate' },
+    { name: 'Pec Deck Fly', level: 'intermediate' },
+    { name: 'Decline Bench Press', level: 'advanced' },
+    { name: 'Weighted Push Up', level: 'advanced' },
+    { name: 'Chest Dip', level: 'advanced' },
+    { name: 'Single Arm Cable Press', level: 'advanced' },
+    { name: 'Svend Press', level: 'advanced' },
+    { name: 'Landmine Press', level: 'advanced' },
   ],
   back: [
-    'Pull Up',
-    'Chin Up',
-    'Lat Pulldown',
-    'Wide Grip Lat Pulldown',
-    'Close Grip Pulldown',
-    'Barbell Row',
-    'Pendlay Row',
-    'Seated Cable Row',
-    'One Arm Dumbbell Row',
-    'T-Bar Row',
-    'Straight Arm Pulldown',
-    'Face Pull',
-    'Deadlift',
-    'Rack Pull',
-    'Meadows Row',
+    { name: 'Lat Pulldown', level: 'beginner' },
+    { name: 'Close Grip Pulldown', level: 'beginner' },
+    { name: 'Seated Cable Row', level: 'beginner' },
+    { name: 'One Arm Dumbbell Row', level: 'beginner' },
+    { name: 'Face Pull', level: 'beginner' },
+    { name: 'Pull Up', level: 'intermediate' },
+    { name: 'Chin Up', level: 'intermediate' },
+    { name: 'Barbell Row', level: 'intermediate' },
+    { name: 'T-Bar Row', level: 'intermediate' },
+    { name: 'Straight Arm Pulldown', level: 'intermediate' },
+    { name: 'Wide Grip Lat Pulldown', level: 'advanced' },
+    { name: 'Pendlay Row', level: 'advanced' },
+    { name: 'Meadows Row', level: 'advanced' },
+    { name: 'Deadlift', level: 'advanced' },
+    { name: 'Rack Pull', level: 'advanced' },
   ],
   legs: [
-    'Back Squat',
-    'Front Squat',
-    'Box Squat',
-    'Bulgarian Split Squat',
-    'Walking Lunge',
-    'Reverse Lunge',
-    'Leg Press',
-    'Hack Squat',
-    'Romanian Deadlift',
-    'Stiff Leg Deadlift',
-    'Hip Thrust',
-    'Leg Extension',
-    'Lying Leg Curl',
-    'Seated Leg Curl',
-    'Standing Calf Raise',
-    'Seated Calf Raise',
+    { name: 'Leg Press', level: 'beginner' },
+    { name: 'Walking Lunge', level: 'beginner' },
+    { name: 'Reverse Lunge', level: 'beginner' },
+    { name: 'Leg Extension', level: 'beginner' },
+    { name: 'Seated Leg Curl', level: 'beginner' },
+    { name: 'Standing Calf Raise', level: 'beginner' },
+    { name: 'Back Squat', level: 'intermediate' },
+    { name: 'Front Squat', level: 'intermediate' },
+    { name: 'Romanian Deadlift', level: 'intermediate' },
+    { name: 'Hip Thrust', level: 'intermediate' },
+    { name: 'Bulgarian Split Squat', level: 'intermediate' },
+    { name: 'Lying Leg Curl', level: 'intermediate' },
+    { name: 'Box Squat', level: 'advanced' },
+    { name: 'Hack Squat', level: 'advanced' },
+    { name: 'Stiff Leg Deadlift', level: 'advanced' },
+    { name: 'Seated Calf Raise', level: 'advanced' },
   ],
   arms: [
-    'Barbell Curl',
-    'EZ Bar Curl',
-    'Dumbbell Curl',
-    'Incline Dumbbell Curl',
-    'Hammer Curl',
-    'Preacher Curl',
-    'Concentration Curl',
-    'Cable Curl',
-    'Triceps Pushdown',
-    'Overhead Triceps Extension',
-    'Skull Crusher',
-    'Bench Dip',
-    'Rope Pushdown',
-    'Close Grip Bench Press',
-    'Diamond Push Up',
+    { name: 'Dumbbell Curl', level: 'beginner' },
+    { name: 'Hammer Curl', level: 'beginner' },
+    { name: 'Triceps Pushdown', level: 'beginner' },
+    { name: 'Rope Pushdown', level: 'beginner' },
+    { name: 'Bench Dip', level: 'beginner' },
+    { name: 'Barbell Curl', level: 'intermediate' },
+    { name: 'EZ Bar Curl', level: 'intermediate' },
+    { name: 'Incline Dumbbell Curl', level: 'intermediate' },
+    { name: 'Overhead Triceps Extension', level: 'intermediate' },
+    { name: 'Skull Crusher', level: 'intermediate' },
+    { name: 'Cable Curl', level: 'intermediate' },
+    { name: 'Preacher Curl', level: 'advanced' },
+    { name: 'Concentration Curl', level: 'advanced' },
+    { name: 'Close Grip Bench Press', level: 'advanced' },
+    { name: 'Diamond Push Up', level: 'advanced' },
   ],
   shoulders: [
-    'Overhead Press',
-    'Seated Dumbbell Press',
-    'Arnold Press',
-    'Push Press',
-    'Lateral Raise',
-    'Cable Lateral Raise',
-    'Rear Delt Fly',
-    'Reverse Pec Deck',
-    'Upright Row',
-    'Front Raise',
-    'Lean Away Lateral Raise',
-    'Snatch Grip High Pull',
+    { name: 'Seated Dumbbell Press', level: 'beginner' },
+    { name: 'Lateral Raise', level: 'beginner' },
+    { name: 'Front Raise', level: 'beginner' },
+    { name: 'Rear Delt Fly', level: 'beginner' },
+    { name: 'Overhead Press', level: 'intermediate' },
+    { name: 'Arnold Press', level: 'intermediate' },
+    { name: 'Cable Lateral Raise', level: 'intermediate' },
+    { name: 'Upright Row', level: 'intermediate' },
+    { name: 'Reverse Pec Deck', level: 'intermediate' },
+    { name: 'Push Press', level: 'advanced' },
+    { name: 'Lean Away Lateral Raise', level: 'advanced' },
+    { name: 'Snatch Grip High Pull', level: 'advanced' },
   ],
   core: [
-    'Plank',
-    'Side Plank',
-    'Dead Bug',
-    'Hollow Body Hold',
-    'Ab Wheel Rollout',
-    'Hanging Leg Raise',
-    'Knee Raise',
-    'Cable Crunch',
-    'Russian Twist',
-    'Bicycle Crunch',
-    'Mountain Climber',
-    'Pallof Press',
+    { name: 'Plank', level: 'beginner' },
+    { name: 'Side Plank', level: 'beginner' },
+    { name: 'Dead Bug', level: 'beginner' },
+    { name: 'Bicycle Crunch', level: 'beginner' },
+    { name: 'Mountain Climber', level: 'beginner' },
+    { name: 'Cable Crunch', level: 'intermediate' },
+    { name: 'Russian Twist', level: 'intermediate' },
+    { name: 'Knee Raise', level: 'intermediate' },
+    { name: 'Pallof Press', level: 'intermediate' },
+    { name: 'Ab Wheel Rollout', level: 'advanced' },
+    { name: 'Hanging Leg Raise', level: 'advanced' },
+    { name: 'Hollow Body Hold', level: 'advanced' },
   ],
-} as const;
+};
 
-const MOCK_EXERCISES: ExerciseDefinition[] = Object.entries(GROUP_NAMES).flatMap(
-  ([muscleGroup, names]) =>
-    names.map((name) => ({
+const MOCK_EXERCISES: ExerciseDefinition[] = Object.entries(GROUP_EXERCISES).flatMap(
+  ([muscleGroup, entries]) =>
+    entries.map(({ name, level }) => ({
       id: `local-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       name,
       muscleGroup: muscleGroup as ExerciseDefinition['muscleGroup'],
+      level,
       equipment: undefined,
     }))
 );
+
+const DEFAULT_WGER_LEVEL: ExerciseLevel = 'intermediate';
 
 type WgerExerciseInfoResponse = {
   next: string | null;
@@ -159,6 +161,7 @@ const normalizeExercise = (item: WgerExerciseInfo): ExerciseDefinition | null =>
     id: `wger-${item.id}`,
     name,
     muscleGroup,
+    level: DEFAULT_WGER_LEVEL,
     equipment: item.equipment?.map((entry) => entry.name).filter(Boolean).join(', ') || undefined,
   };
 };
@@ -166,6 +169,7 @@ const normalizeExercise = (item: WgerExerciseInfo): ExerciseDefinition | null =>
 const applyQuery = (catalog: ExerciseDefinition[], query?: ExerciseQuery): ExerciseDefinition[] => {
   const searchTerm = query?.search?.trim().toLowerCase() ?? '';
   const muscleGroup = query?.muscleGroup ?? 'all';
+  const level = query?.level ?? 'all';
 
   return catalog.filter((exercise) => {
     const matchesSearch =
@@ -174,8 +178,9 @@ const applyQuery = (catalog: ExerciseDefinition[], query?: ExerciseQuery): Exerc
       exercise.equipment?.toLowerCase().includes(searchTerm);
 
     const matchesMuscleGroup = muscleGroup === 'all' || exercise.muscleGroup === muscleGroup;
+    const matchesLevel = level === 'all' || exercise.level === level;
 
-    return matchesSearch && matchesMuscleGroup;
+    return matchesSearch && matchesMuscleGroup && matchesLevel;
   });
 };
 
@@ -245,7 +250,8 @@ class MockExerciseService implements ExerciseService {
 
   async getExercises(query?: ExerciseQuery): Promise<ExerciseDefinition[]> {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    const catalog = await this.getCatalog();
+    const useLevelCatalog = query?.level && query.level !== 'all';
+    const catalog = useLevelCatalog ? MOCK_EXERCISES : await this.getCatalog();
     return applyQuery(catalog, query);
   }
 }

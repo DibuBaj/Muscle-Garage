@@ -1,9 +1,11 @@
 export type MuscleGroup = 'chest' | 'back' | 'legs' | 'arms' | 'shoulders' | 'core';
+export type ExerciseLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export interface ExerciseDefinition {
   id: string;
   name: string;
   muscleGroup: MuscleGroup;
+  level: ExerciseLevel;
   equipment?: string;
 }
 
@@ -48,4 +50,5 @@ export interface WorkoutSessionDraft {
 export interface ExerciseQuery {
   search?: string;
   muscleGroup?: MuscleGroup | 'all';
+  level?: ExerciseLevel | 'all';
 }

@@ -649,7 +649,7 @@ const StoreScreen = () => {
                       style={styles.qtySmallBtn}
                       onPress={() => setCart(cart.map((i) => (i._id === item._id ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i)))}
                     >
-                      <Text style={styles.qtySmallText}>âˆ’</Text>
+                      <Text style={styles.qtySmallText}>-</Text>
                     </TouchableOpacity>
                     <Text style={styles.qtyValue}>{item.quantity}</Text>
                     <TouchableOpacity
