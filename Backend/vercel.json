@@ -1,21 +1,24 @@
 {
- "version": 2,
- "builds": [
-  {
-   "src": "server.js",
-            "use": "@vercel/node",
-            "config": {
-                "includeFiles": [
-                    "node_modules/mongodb/lib/resource_management.js",
-                    "node_modules/mongoose/lib/**"
-                ]
-            }
-  }
- ],
- "routes": [
-  {
-   "src": "/(.*)",
-   "dest": "server.js"
-  }
- ]
+    "version": 2,
+    "builds": [
+        {
+            "src": "server.js",
+            "use": "@vercel/node"
+        }
+    ],
+    "functions": {
+        "server.js": {
+            "includeFiles": [
+                "node_modules/mongodb/lib/resource_management.js",
+                "node_modules/mongoose/lib/helpers/promiseOrCallback.js",
+                "node_modules/mongoose/lib/**"
+            ]
+        }
+    },
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "server.js"
+        }
+    ]
 }
