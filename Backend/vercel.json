@@ -1,5 +1,11 @@
 {
     "version": 2,
+    "crons": [
+        {
+            "path": "/api/cron/daily-subscription-update",
+            "schedule": "0 0 * * *"
+        }
+    ],
     "builds": [
         {
             "src": "server.js",

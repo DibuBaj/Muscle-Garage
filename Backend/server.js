@@ -110,10 +110,39 @@ const initializeDefaultPlans = async () => {
   }
 };
 
-// Cron job: Decrease daysLeft daily at midnight
-cron.schedule('0 0 * * *', () => {
-  console.log('[Cron Job] Running daily subscription update...');
-  decreaseDaysDaily();
+// Run the daily subscription update locally only.
+// On Vercel, this is triggered through a scheduled HTTP request.
+const isServerless = !!process.env.VERCEL;
+
+if (!isServerless) {
+  cron.schedule('0 0 * * *', () => {
+    console.log('[Cron Job] Running daily subscription update...');
+    decreaseDaysDaily();
+  });
+}
+
+app.get('/api/cron/daily-subscription-update', async (req, res) => {
+  try {
+    if (process.env.VERCEL && req.headers['x-vercel-cron'] !== '1') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden',
+      });
+    }
+
+    console.log('[Cron Endpoint] Running daily subscription update...');
+    await decreaseDaysDaily();
+    return res.status(200).json({
+      success: true,
+      message: 'Daily subscription update completed',
+    });
+  } catch (err) {
+    console.error('[Cron Endpoint] Daily subscription update failed:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to run daily subscription update',
+    });
+  }
 });
 
 // Initialize default plans on startup
