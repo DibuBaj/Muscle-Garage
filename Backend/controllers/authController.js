@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const OTP = require('../models/OTP');
+const AdminCredential = require('../models/AdminCredential');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendOTPEmail } = require('../config/email');
@@ -17,6 +18,35 @@ const {
 const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const normalizePhone = (value = '') => String(value).replace(/\D/g, '');
+
+const ADMIN_CREDENTIAL_KEY = 'primary';
+
+const getAdminPasswordSource = async () => {
+  const storedCredential = await AdminCredential.findOne({ key: ADMIN_CREDENTIAL_KEY }).lean();
+
+  if (storedCredential?.passwordHash) {
+    return {
+      source: 'database',
+      passwordHash: storedCredential.passwordHash,
+    };
+  }
+
+  const envPassword = (process.env.ADMIN_PASS || '').trim();
+  return {
+    source: 'env',
+    passwordHash: envPassword,
+  };
+};
+
+const matchesAdminPassword = async (candidatePassword, storedPassword, source) => {
+  if (!storedPassword) return false;
+
+  if (source === 'database') {
+    return bcrypt.compare(candidatePassword, storedPassword);
+  }
+
+  return candidatePassword === storedPassword;
+};
 
 exports.checkSignupAvailability = async (req, res) => {
   const username = String(req.body?.username || '').trim();
@@ -757,7 +787,7 @@ exports.adminLogin = async (req, res) => {
     }
 
     const adminEmail = (process.env.EMAIL_ADMIN || '').trim();
-    const adminPassword = (process.env.ADMIN_PASS || '').trim();
+    const { source, passwordHash: adminPassword } = await getAdminPasswordSource();
 
     const receivedEmail = (email || '').trim();
     const receivedPassword = (password || '').trim();
@@ -767,17 +797,18 @@ exports.adminLogin = async (req, res) => {
     console.log('Received - Email:', `"${receivedEmail}"`, '| Length:', receivedEmail.length);
     console.log('Received - Password:', `"${receivedPassword}"`, '| Length:', receivedPassword.length);
     console.log('Expected - Email:', `"${adminEmail}"`, '| Length:', adminEmail.length);
-    console.log('Expected - Password:', `"${adminPassword}"`, '| Length:', adminPassword.length);
+    console.log('Password source:', source);
+    console.log('Expected - Password:', adminPassword ? 'configured' : 'missing');
     
     const emailLower = receivedEmail.toLowerCase();
     const adminEmailLower = adminEmail.toLowerCase();
     console.log('Email Match (case-insensitive):', emailLower === adminEmailLower);
-    console.log('Password Match (exact):', receivedPassword === adminPassword);
+    console.log('Password Match:', source === 'database' ? 'bcrypt compare' : 'exact string compare');
     console.log('=========================================\n');
 
     // Compare credentials
     const emailMatch = receivedEmail.toLowerCase() === adminEmailLower;
-    const passwordMatch = receivedPassword === adminPassword;
+    const passwordMatch = await matchesAdminPassword(receivedPassword, adminPassword, source);
 
     if (!emailMatch || !passwordMatch) {
       return res.status(401).json({ 
@@ -807,6 +838,59 @@ exports.adminLogin = async (req, res) => {
   } catch (err) {
     console.error('Admin Login Error:', err);
     res.status(500).json({ success: false, message: 'Failed to login' });
+  }
+};
+
+exports.changeAdminPassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide current and new password',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters',
+      });
+    }
+
+    const { source, passwordHash: adminPassword } = await getAdminPasswordSource();
+    const currentPasswordValid = await matchesAdminPassword(
+      String(currentPassword).trim(),
+      adminPassword,
+      source
+    );
+
+    if (!currentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(String(newPassword), 10);
+
+    await AdminCredential.findOneAndUpdate(
+      { key: ADMIN_CREDENTIAL_KEY },
+      { key: ADMIN_CREDENTIAL_KEY, passwordHash },
+      { upsert: true, new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Admin password updated successfully',
+    });
+  } catch (err) {
+    console.error('Change admin password error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update admin password',
+    });
   }
 };
 

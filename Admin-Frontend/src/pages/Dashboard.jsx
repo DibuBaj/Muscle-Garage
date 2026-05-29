@@ -217,11 +217,11 @@ const Dashboard = () => {
               value={counts.bookings}
               subtitle="Sessions & trainers booked"
             />
-            <StatCard
+            {/* <StatCard
               title="Active Subscriptions"
               value={counts.subscriptions}
               subtitle="Active members"
-            />
+            /> */}
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
 // API Configuration
-export const API_URL = import.meta.env.VITE_API_URL || 'https://muscle-garage-3rgl.vercel.app';
+const RAW_API_URL = import.meta.env.VITE_API_URL;
+export const API_URL = RAW_API_URL.replace(/\/+$/, '');
 
-export const getApiUrl = (endpoint) => {
-  return `${API_URL}${endpoint}`;
+export const getApiUrl = (endpoint = '') => {
+  if (!endpoint) return API_URL;
+  return `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 };

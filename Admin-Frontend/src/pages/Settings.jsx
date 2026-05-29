@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { useAuth } from '../context/useAuth';
 import logoImage from '../assets/logo.png';
 import './Settings.css';
+import { API_URL } from '../utils/api';
 
 const Settings = () => {
   const { adminEmail } = useAuth();
@@ -12,13 +14,14 @@ const Settings = () => {
     confirmPassword: '',
   });
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handlePasswordChange = (event) => {
     const { name, value } = event.target;
     setPasswordForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
 
@@ -27,8 +30,42 @@ const Settings = () => {
       return;
     }
 
-    // TODO: Wire up to real password update endpoint
-    setMessage('Password change request submitted.');
+    const adminToken = localStorage.getItem('adminToken');
+
+    if (!adminToken) {
+      setMessage('Your session has expired. Please log in again.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        `${API_URL}/api/auth/admin-change-password`,
+        {
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        }
+      );
+
+      if (response.data?.success) {
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      }
+
+      setMessage(response.data?.message || 'Password updated successfully.');
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Failed to update password.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -93,7 +130,9 @@ const Settings = () => {
           {message && <div className="form-message">{message}</div>}
 
           <div className="form-actions">
-            <button type="submit" className="primary-btn">Update Password</button>
+            <button type="submit" className="primary-btn" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Password'}
+            </button>
           </div>
         </form>
       </div>

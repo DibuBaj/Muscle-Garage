@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         `${API_URL}/auth/login`,
         { email, password },
         {
-          timeout: 10000,
+          timeout: 20000,
           validateStatus: () => true,
         }
       );
