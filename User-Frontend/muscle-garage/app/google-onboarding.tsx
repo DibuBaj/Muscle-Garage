@@ -16,11 +16,13 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const NEPAL_MOBILE_REGEX = /^9[678]\d{8}$/;
 
 export default function GoogleOnboardingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { completeGoogleOnboarding } = useAuth();
   const params = useLocalSearchParams();
   const [step, setStep] = useState(1);
@@ -183,7 +185,7 @@ export default function GoogleOnboardingScreen() {
       keyboardVerticalOffset={0}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

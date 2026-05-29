@@ -16,9 +16,11 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { login, isAuthenticating, user, loading } = useAuth();
   const scrollViewRef = React.useRef<ScrollView>(null);
   const inputRefs = React.useRef<Record<string, View>>({});
@@ -100,7 +102,7 @@ export default function LoginScreen() {
       keyboardVerticalOffset={0}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         scrollEnabled={true}

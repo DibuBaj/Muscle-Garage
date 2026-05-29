@@ -13,9 +13,13 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const OTP_LENGTH = 6;
 
 export default function VerifyOTPScreen() {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const insets = useSafeAreaInsets();
+  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,16 +51,30 @@ export default function VerifyOTPScreen() {
   }, [countdown]);
 
   const handleOtpChange = (value: string, index: number) => {
-    if (value.length > 1) {
-      value = value[value.length - 1];
+    const digits = value.replace(/\D/g, '');
+
+    if (!digits) {
+      const newOtp = [...otp];
+      newOtp[index] = '';
+      setOtp(newOtp);
+      return;
     }
 
     const newOtp = [...otp];
-    newOtp[index] = value;
+    // Support pasting multiple digits into any box by spreading from current index.
+    let cursor = index;
+    for (const digit of digits) {
+      if (cursor >= OTP_LENGTH) break;
+      newOtp[cursor] = digit;
+      cursor += 1;
+    }
+
     setOtp(newOtp);
 
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+    if (cursor < OTP_LENGTH) {
+      inputRefs.current[cursor]?.focus();
+    } else {
+      inputRefs.current[OTP_LENGTH - 1]?.focus();
     }
   };
 
@@ -72,7 +90,7 @@ export default function VerifyOTPScreen() {
 
   const handleVerify = async () => {
     const otpString = otp.join('');
-    if (otpString.length !== 6) {
+    if (otpString.length !== OTP_LENGTH) {
       setError('Please enter the complete 6-digit OTP');
       return;
     }
@@ -100,7 +118,7 @@ export default function VerifyOTPScreen() {
       setSuccess('OTP resent successfully!');
       setCountdown(60);
       setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
+      setOtp(Array(OTP_LENGTH).fill(''));
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to resend OTP.');
@@ -114,7 +132,7 @@ export default function VerifyOTPScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top + 12 }]}>
         <Image
           source={require('@/assets/images/logo.png')}
           style={styles.logo}
@@ -141,7 +159,7 @@ export default function VerifyOTPScreen() {
               onChangeText={(value) => handleOtpChange(value, index)}
               onKeyPress={(e) => handleKeyPress(e, index)}
               keyboardType="number-pad"
-              maxLength={1}
+              maxLength={OTP_LENGTH}
               selectionColor={Colors.primary}
               placeholderTextColor={Colors.darkGray}
             />

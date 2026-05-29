@@ -16,15 +16,19 @@ import { Ionicons } from '@expo/vector-icons';
 import axios, { AxiosError } from 'axios';
 import { API_URL } from '@/constants/api';
 import PasswordStrengthIndicator from '@/components/password-strength-indicator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const OTP_LENGTH = 6;
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = React.useRef<ScrollView>(null);
   const inputRefs = React.useRef<Record<string, View>>({});
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -88,7 +92,7 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    if (otpString.length !== 6) {
+    if (otpString.length !== OTP_LENGTH) {
       setErrors({ otp: 'OTP must be 6 digits' });
       return;
     }
@@ -112,16 +116,30 @@ export default function ForgotPasswordScreen() {
   };
 
   const handleOtpChange = (value: string, index: number) => {
-    if (value.length > 1) {
-      value = value[value.length - 1];
+    const digits = value.replace(/\D/g, '');
+
+    if (!digits) {
+      const newOtp = [...otp];
+      newOtp[index] = '';
+      setOtp(newOtp);
+      return;
     }
 
     const newOtp = [...otp];
-    newOtp[index] = value;
+    // Support pasting multiple digits into OTP boxes.
+    let cursor = index;
+    for (const digit of digits) {
+      if (cursor >= OTP_LENGTH) break;
+      newOtp[cursor] = digit;
+      cursor += 1;
+    }
+
     setOtp(newOtp);
 
-    if (value && index < 5) {
-      otpInputRefs.current[index + 1]?.focus();
+    if (cursor < OTP_LENGTH) {
+      otpInputRefs.current[cursor]?.focus();
+    } else {
+      otpInputRefs.current[OTP_LENGTH - 1]?.focus();
     }
   };
 
@@ -171,7 +189,7 @@ export default function ForgotPasswordScreen() {
         setTimeout(() => {
           setStep(1);
           setEmail('');
-          setOtp(['', '', '', '', '', '']);
+          setOtp(Array(OTP_LENGTH).fill(''));
           setNewPassword('');
           setConfirmPassword('');
           setErrors({});
@@ -200,7 +218,7 @@ export default function ForgotPasswordScreen() {
       keyboardVerticalOffset={0}
     >
       {successMessage ? (
-        <View style={styles.successNotification}>
+        <View style={[styles.successNotification, { paddingTop: insets.top + 12 }]}>
           <View style={styles.successContent}>
             <Ionicons name="checkmark-circle" size={24} color={Colors.success} style={styles.successIcon} />
             <Text style={styles.successText}>{successMessage}</Text>
@@ -209,7 +227,7 @@ export default function ForgotPasswordScreen() {
       ) : null}
       
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         scrollEnabled={true}
@@ -307,7 +325,7 @@ export default function ForgotPasswordScreen() {
                   onChangeText={(value) => handleOtpChange(value, index)}
                   onKeyPress={(e) => handleOtpKeyPress(e, index)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={OTP_LENGTH}
                   selectionColor={Colors.primary}
                   placeholderTextColor={Colors.darkGray}
                   editable={!loading}

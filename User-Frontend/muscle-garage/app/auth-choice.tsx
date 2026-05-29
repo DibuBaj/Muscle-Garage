@@ -16,11 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
 import { API_URL } from '@/constants/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthChoiceScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -65,7 +67,7 @@ export default function AuthChoiceScreen() {
       style={styles.keyboardAvoidingView}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 40 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>

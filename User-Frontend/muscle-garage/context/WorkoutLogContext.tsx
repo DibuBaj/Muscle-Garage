@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { WorkoutSession, WorkoutSessionDraft } from '@/features/workout-log/types';
 import { workoutSessionRepository } from '@/features/workout-log/services/workoutSessionRepository';
+import { useAuth } from '@/context/AuthContext';
 
 type WorkoutLogState = {
   sessions: WorkoutSession[];
@@ -104,11 +105,18 @@ function transformDraftForUpdate(existing: WorkoutSession, draft: WorkoutSession
 
 export function WorkoutLogProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { user } = useAuth();
 
   const refreshSessions = async () => {
     dispatch({ type: 'LOAD_START' });
+
+    if (!user?.id) {
+      dispatch({ type: 'LOAD_SUCCESS', payload: [] });
+      return;
+    }
+
     try {
-      const sessions = await workoutSessionRepository.listSessions();
+      const sessions = await workoutSessionRepository.listSessions(user.id);
       dispatch({ type: 'LOAD_SUCCESS', payload: sessions });
     } catch {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to load workout sessions.' });
@@ -116,9 +124,14 @@ export function WorkoutLogProvider({ children }: { children: React.ReactNode }) 
   };
 
   const createWorkoutSession = async (draft: WorkoutSessionDraft) => {
+    if (!user?.id) {
+      dispatch({ type: 'SET_ERROR', payload: 'You must be logged in to save workout sessions.' });
+      throw new Error('You must be logged in to save workout sessions.');
+    }
+
     try {
       const session = transformDraft(draft);
-      await workoutSessionRepository.saveSession(session);
+      await workoutSessionRepository.saveSession(user.id, session);
       dispatch({ type: 'ADD_SESSION', payload: session });
     } catch {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to save workout session.' });
@@ -127,6 +140,11 @@ export function WorkoutLogProvider({ children }: { children: React.ReactNode }) 
   };
 
   const updateWorkoutSession = async (sessionId: string, draft: WorkoutSessionDraft) => {
+    if (!user?.id) {
+      dispatch({ type: 'SET_ERROR', payload: 'You must be logged in to update workout sessions.' });
+      throw new Error('You must be logged in to update workout sessions.');
+    }
+
     try {
       const existing = state.sessions.find((entry) => entry.id === sessionId);
       if (!existing) {
@@ -134,7 +152,7 @@ export function WorkoutLogProvider({ children }: { children: React.ReactNode }) 
       }
 
       const updatedSession = transformDraftForUpdate(existing, draft);
-      await workoutSessionRepository.updateSession(updatedSession);
+      await workoutSessionRepository.updateSession(user.id, updatedSession);
       dispatch({ type: 'UPDATE_SESSION', payload: updatedSession });
     } catch {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to update workout session.' });
@@ -143,8 +161,13 @@ export function WorkoutLogProvider({ children }: { children: React.ReactNode }) 
   };
 
   const deleteWorkoutSession = async (sessionId: string) => {
+    if (!user?.id) {
+      dispatch({ type: 'SET_ERROR', payload: 'You must be logged in to delete workout sessions.' });
+      throw new Error('You must be logged in to delete workout sessions.');
+    }
+
     try {
-      await workoutSessionRepository.deleteSession(sessionId);
+      await workoutSessionRepository.deleteSession(user.id, sessionId);
       dispatch({ type: 'DELETE_SESSION', payload: sessionId });
     } catch {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to delete workout session.' });
@@ -158,7 +181,7 @@ export function WorkoutLogProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     refreshSessions();
-  }, []);
+  }, [user?.id]);
 
   const value = useMemo(
     () => ({
@@ -171,7 +194,7 @@ export function WorkoutLogProvider({ children }: { children: React.ReactNode }) 
       refreshSessions,
       clearError,
     }),
-    [state.sessions, state.loading, state.error]
+    [state.sessions, state.loading, state.error, user?.id]
   );
 
   return <WorkoutLogContext.Provider value={value}>{children}</WorkoutLogContext.Provider>;

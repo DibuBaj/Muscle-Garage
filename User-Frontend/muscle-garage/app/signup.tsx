@@ -20,6 +20,7 @@ import PasswordStrengthIndicator from '@/components/password-strength-indicator'
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
 import { API_URL } from '@/constants/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,6 +28,7 @@ const NEPAL_MOBILE_REGEX = /^9[678]\d{8}$/;
 
 export default function SignupScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { sendOTP, isAuthenticating, error: authError } = useAuth();
   const [step, setStep] = useState(1);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -346,7 +348,7 @@ export default function SignupScreen() {
     >
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         scrollEnabled={true}
